@@ -35,13 +35,20 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 $(function()
 {
   var vActionTagPopup = actionTagExplainPopup
-  var vMakeRow = function( tag, desc, position )
+  var vMakeRow = function( tag, desc, position, insertAfter = false )
   {
     var vRow = $( '<tr>' + $('tr:has(td.nowrap:contains("' + position + '")):eq(0)').html() + '</tr>' )
     vRow.find('td:eq(1)').html( tag )
     vRow.find('td:eq(2)').html( desc )
     vRow.find('button').attr('onclick', vRow.find('button').attr('onclick').replace(position,tag))
-    $('tr:has(td.nowrap:contains("' + position + '")):eq(0)').before( vRow )
+    if ( insertAfter )
+    {
+      $('tr:has(td.nowrap:contains("' + position + '")):eq(0)').after( vRow )
+    }
+    else
+    {
+      $('tr:has(td.nowrap:contains("' + position + '")):eq(0)').before( vRow )
+    }
   }
   actionTagExplainPopup = function( hideBtns )
   {
@@ -62,7 +69,7 @@ $(function()
       vMakeRow( '@REGEX', 'Validate a field according to a regular expression. The format must ' +
                           'follow the pattern @REGEX=\'????\', in which the pattern is inside ' +
                           'single or double quotes.',
-                          '@TODAY' )
+                          '@READONLY-SURVEY', true )
 <?php
 
 			}
@@ -102,6 +109,7 @@ $(function()
 	                                            $group_id=null, $repeat_instance=1 )
 	{
 		$this->outputDateValidation( $instrument );
+		$this->outputRegexValidation( $instrument );
 		$this->outputEnforceValidation( $instrument );
 	}
 
@@ -112,6 +120,7 @@ $(function()
 	                                        $repeat_instance=1 )
 	{
 		$this->outputDateValidation( $instrument );
+		$this->outputRegexValidation( $instrument );
 		$this->outputSurveyValidationSkip();
 	}
 
@@ -121,7 +130,7 @@ $(function()
 	{
 		$blockFutureDates = $this->getProjectSetting( 'no-future-dates' );
 		$blockPastDates = $this->getProjectSetting( 'no-past-dates' );
-		$listDateFields = array();
+		$listDateFields = [];
 		$listFormFields = \REDCap::getDataDictionary( 'array', false, true, $instrument );
 
 		foreach ( $listFormFields as $fieldName => $infoField )
@@ -224,10 +233,21 @@ $(function()
 		$reqFields = '';
 		foreach ( $listFormFields as $fieldName => $infoField )
 		{
-			if ( $infofield['field_req'] )
+			if ( $infoField['required_field'] == 'y' )
 			{
-				$reqFields .= $reqFields == '' ? '' : ', ';
-				$reqFields .= ( $infoField['element_type'] == 'select' ? 'select' : 'input' );
+				$reqFields .= ( $reqFields == '' ) ? '' : ', ';
+				switch ( $infoField['field_type'] )
+				{
+					case 'notes':
+						$reqFields .= 'textarea';
+						break;
+					case 'dropdown':
+						$reqFields .= 'select';
+						break;
+					default:
+						$reqFields .= 'input';
+						break;
+				}
 				$reqFields .= '[name="' . $fieldName . '"]:visible';
 			}
 		}
@@ -238,7 +258,7 @@ $(function()
 $(function()
 {
   $('#valtext_rangesoft2').text('Please check.')
-  $('input:visible, select:visible').each( function()
+  $('input:visible, textarea:visible, select:visible').each( function()
   {
     if ( typeof this.onblur == 'function' )
     {
@@ -252,6 +272,7 @@ $(function()
       return true
     }
     if ( $('input[style*="background-color: rgb(255, 183, 190)"]:visible, ' +
+           'textarea[style*="background-color: rgb(255, 183, 190)"]:visible, ' +
            'select[style*="background-color: rgb(255, 183, 190)"]:visible').length > 0 )
     {
       return false
@@ -286,6 +307,92 @@ $(function()
 <?php
 
 
+	}
+
+
+
+	protected function outputRegexValidation( $instrument )
+	{
+		if ( ! $this->getSystemSetting( 'enable-regex' ) )
+		{
+			return;
+		}
+
+		$listRegexFields = [];
+		$listFormFields = \REDCap::getDataDictionary( 'array', false, true, $instrument );
+
+		foreach ( $listFormFields as $fieldName => $infoField )
+		{
+			if ( in_array( $infoField[ 'field_type' ], [ 'text', 'notes' ] ) &&
+			     $infoField[ self::VTYPE ] == '' )
+			{
+				$hasRegex = preg_match( "/(^|\\s)@REGEX=((\'[^\'\r\n]*\')|(\"[^\"\r\n]*\"))(\\s|$)/",
+				                        $infoField['field_annotation'], $regexMatches );
+				if ( $hasRegex )
+				{
+					$fieldRegex = substr( $regexMatches[ 2 ], 1, -1 );
+					$validRegex = ( preg_match( $regexMatches[ 2 ], '' ) !== false );
+					if ( $validRegex && $fieldRegex != '' )
+					{
+						$listRegexFields[ $fieldName ] = [ 'regex' =>$fieldRegex,
+						                                   'type' => $infoField[ 'field_type' ] ];
+					}
+				}
+			}
+		}
+
+		if ( count( $listRegexFields ) > 0 )
+		{
+
+
+?>
+<script type="text/javascript">
+$(function()
+{
+  var vFuncRegexValidate = function ( vElem, vPattern )
+  {
+    var vRegex = new RegExp( vPattern )
+    if ( vElem.value == '' || vRegex.test( vElem.value ) )
+    {
+      vElem.style.fontWeight = 'normal'
+      vElem.style.backgroundColor = '#FFFFFF'
+    }
+    else
+    {
+      var vPopupID = 'redcapValidationErrorPopup'
+      var vPopupMsg = 'The value you provided could not be validated because it does not follow ' +
+                      'the expected format. Please try again.'
+      $('#' + vPopupID).remove()
+      initDialog( vPopupID )
+      $('#' + vPopupID).html(vPopupMsg)
+      setTimeout( function()
+      {
+        simpleDialog( vPopupMsg, null, vPopupID, null, '' )
+      }, 20 )
+      vElem.style.fontWeight = 'bold'
+      vElem.style.backgroundColor = '#FFB7BE'
+    }
+  }
+  var vFields = JSON.parse('<?php echo json_encode($listRegexFields); ?>')
+  Object.keys( vFields ).forEach( function( vFieldName )
+  {
+    var vFieldData = vFields[ vFieldName ]
+    if ( vFieldData.type == 'notes' )
+    {
+      var vFieldObj = $('textarea[name="' + vFieldName + '"]')[0]
+    }
+    else
+    {
+      var vFieldObj = $('input[name="' + vFieldName + '"]')[0]
+    }
+    vFieldObj.onblur = function() { vFuncRegexValidate( this, vFieldData.regex ) }
+  })
+})
+</script>
+<?php
+
+
+		}
 	}
 
 

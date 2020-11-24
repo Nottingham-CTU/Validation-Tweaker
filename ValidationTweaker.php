@@ -108,7 +108,7 @@ $(function()
 	public function redcap_data_entry_form_top( $project_id, $record=null, $instrument, $event_id,
 	                                            $group_id=null, $repeat_instance=1 )
 	{
-		$this->outputDateValidation( $instrument, $record );
+		$this->outputDateValidation( $instrument, $record, $event_id );
 		$this->outputRegexValidation( $instrument );
 		$this->outputEnforceValidation( $instrument );
 	}
@@ -119,26 +119,35 @@ $(function()
 	                                        $group_id=null, $survey_hash=null, $response_id=null,
 	                                        $repeat_instance=1 )
 	{
-		$this->outputDateValidation( $instrument, $record );
+		$this->outputDateValidation( $instrument, $record, $event_id );
 		$this->outputRegexValidation( $instrument );
 		$this->outputSurveyValidationSkip();
 	}
 
 
 
-	protected function outputDateValidation( $instrument, $record )
+	protected function outputDateValidation( $instrument, $record, $eventID )
 	{
 		$blockFutureDates = $this->getProjectSetting( 'no-future-dates' );
 		$blockPastDates = $this->getProjectSetting( 'no-past-dates' );
 		$listDateFields = [];
 		$listFormFields = \REDCap::getDataDictionary( 'array', false, true, $instrument );
-		$earliestDate = '';
+		$projectEarliestDate = '';
+		$recordEarliestDate = '';
 
 		if ( $blockPastDates )
 		{
 			if ( $this->getProjectSetting( 'past-date' ) != '' )
 			{
-				$earliestDate = $this->getProjectSetting( 'past-date' );
+				$projectEarliestDate = $this->getProjectSetting( 'past-date' );
+				if ( strlen( $projectEarliestDate ) == 10 )
+				{
+					$projectEarliestDate .= ' 00:00:00';
+				}
+				elseif ( strlen( $projectEarliestDate ) == 16 )
+				{
+					$projectEarliestDate .= ':00';
+				}
 			}
 
 			$earliestDateEvent = $this->getProjectSetting( 'past-date-event' );
@@ -150,20 +159,21 @@ $(function()
 						[ $record ][ $earliestDateEvent ][ $earliestDateField ];
 				if ( $recordEarliestDate != '' &&
 				     preg_match( '/^[0-9]{4}-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])/',
-				                 $recordEarliestDate ) &&
-				     ( $earliestDate == '' || $earliestDate < $recordEarliestDate ) )
+				                 $recordEarliestDate ) )
 				{
-					$earliestDate = $recordEarliestDate;
+					if ( strlen( $recordEarliestDate ) == 10 )
+					{
+						$recordEarliestDate .= ' 00:00:00';
+					}
+					elseif ( strlen( $recordEarliestDate ) == 16 )
+					{
+						$recordEarliestDate .= ':00';
+					}
 				}
-			}
-
-			if ( strlen( $earliestDate ) == 10 )
-			{
-				$earliestDate .= ' 00:00:00';
-			}
-			elseif ( strlen( $earliestDate ) == 16 )
-			{
-				$earliestDate .= ':00';
+				else
+				{
+					$recordEarliestDate = '';
+				}
 			}
 		}
 
@@ -190,7 +200,19 @@ $(function()
 				{
 					$fieldLength = 10;
 				}
-				$notBefore = $noPastDate ? $earliestDate : '';
+
+				$notBefore = '';
+
+				if ( $noPastDate )
+				{
+					$notBefore = $projectEarliestDate;
+					if ( ( $notBefore == '' || $notBefore < $recordEarliestDate ) &&
+					     ( $earliestDateEvent != $eventID || $earliestDateField != $fieldName ) )
+					{
+						$notBefore = $recordEarliestDate;
+					}
+				}
+
 				$listDateFields[ $fieldName ] = [ 'type' => $infoField[ self::VTYPE ],
 				                                  'len' => $fieldLength,
 				                                  'nofuture' => $noFutureDate,
@@ -458,8 +480,9 @@ $(function()
       vContinueLink.on('click', function()
       {
         var vForm = $('#form')
-        if ( confirm( 'WARNING: Some data is invalid or incomplete.\n\n' +
-                      'It is highly recommended that you cancel now and correct any errors.\n\n' +
+        if ( confirm( 'WARNING: Some questions have not been answered.\n\n' +
+                      'It is highly recommended that you cancel now and ' +
+                      'complete every question.\n\n' +
                       'Are you sure you want to continue?' ) )
         {
           vForm.attr('action', vForm.attr('action') + '&__skipvalidate=1')

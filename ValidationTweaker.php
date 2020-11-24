@@ -108,7 +108,7 @@ $(function()
 	public function redcap_data_entry_form_top( $project_id, $record=null, $instrument, $event_id,
 	                                            $group_id=null, $repeat_instance=1 )
 	{
-		$this->outputDateValidation( $instrument );
+		$this->outputDateValidation( $instrument, $record );
 		$this->outputRegexValidation( $instrument );
 		$this->outputEnforceValidation( $instrument );
 	}
@@ -119,19 +119,53 @@ $(function()
 	                                        $group_id=null, $survey_hash=null, $response_id=null,
 	                                        $repeat_instance=1 )
 	{
-		$this->outputDateValidation( $instrument );
+		$this->outputDateValidation( $instrument, $record );
 		$this->outputRegexValidation( $instrument );
 		$this->outputSurveyValidationSkip();
 	}
 
 
 
-	protected function outputDateValidation( $instrument )
+	protected function outputDateValidation( $instrument, $record )
 	{
 		$blockFutureDates = $this->getProjectSetting( 'no-future-dates' );
 		$blockPastDates = $this->getProjectSetting( 'no-past-dates' );
 		$listDateFields = [];
 		$listFormFields = \REDCap::getDataDictionary( 'array', false, true, $instrument );
+		$earliestDate = '';
+
+		if ( $blockPastDates )
+		{
+			if ( $this->getProjectSetting( 'past-date' ) != '' )
+			{
+				$earliestDate = $this->getProjectSetting( 'past-date' );
+			}
+
+			$earliestDateEvent = $this->getProjectSetting( 'past-date-event' );
+			$earliestDateField = $this->getProjectSetting( 'past-date-field' );
+			if ( $earliestDateEvent != '' && $earliestDateField != '' )
+			{
+				$recordEarliestDate =
+					\REDCap::getData( 'array', $record, $earliestDateField, $earliestDateEvent )
+						[ $record ][ $earliestDateEvent ][ $earliestDateField ];
+				if ( $recordEarliestDate != '' &&
+				     preg_match( '/^[0-9]{4}-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])/',
+				                 $recordEarliestDate ) &&
+				     ( $earliestDate == '' || $earliestDate < $recordEarliestDate ) )
+				{
+					$earliestDate = $recordEarliestDate;
+				}
+			}
+
+			if ( strlen( $earliestDate ) == 10 )
+			{
+				$earliestDate .= ' 00:00:00';
+			}
+			elseif ( strlen( $earliestDate ) == 16 )
+			{
+				$earliestDate .= ':00';
+			}
+		}
 
 		foreach ( $listFormFields as $fieldName => $infoField )
 		{
@@ -156,10 +190,11 @@ $(function()
 				{
 					$fieldLength = 10;
 				}
+				$notBefore = $noPastDate ? $earliestDate : '';
 				$listDateFields[ $fieldName ] = [ 'type' => $infoField[ self::VTYPE ],
 				                                  'len' => $fieldLength,
 				                                  'nofuture' => $noFutureDate,
-				                                  'notbefore' => '' ];
+				                                  'notbefore' => $notBefore ];
 			}
 		}
 
@@ -180,8 +215,12 @@ $(function()
     var vFieldObj = $('input[name="' + vFieldName + '"]')[0]
     var vFieldData = vFields[ vFieldName ]
     var vOldBlur = vFieldObj.onblur
-    var vNotBefore = vFieldData.notbefore
+    var vNotBefore = ''
     var vNotAfter = ''
+    if ( vFieldData.notbefore != '' )
+    {
+      vNotBefore = vFieldData.notbefore.slice( 0, vFieldData.len )
+    }
     if ( vFieldData.nofuture )
     {
       vNotAfter = vNow.slice( 0, vFieldData.len )
@@ -442,6 +481,32 @@ $(function()
 </script>
 <?php
 
+	}
+
+
+
+	public function validateSettings( $settings )
+	{
+		if ( $settings['no-past-dates'] )
+		{
+			if ( ( $settings['past-date-event'] == '' && $settings['past-date-field'] != '' ) ||
+			     ( $settings['past-date-event'] != '' && $settings['past-date-field'] == '' ) )
+			{
+				return 'To determine past dates by field, both event and field must be specified.';
+			}
+			if ( $settings['past-date-event'] == '' && $settings['past-date'] == '' )
+			{
+				return 'To disallow entry of dates in the past, either an event/field or a fixed ' .
+				       'date must be specified to determine past dates.';
+			}
+			if ( $settings['past-date'] != '' &&
+			     ! preg_match( '/^[0-9]{4}-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])$/',
+			                   $settings['past-date'] ) )
+			{
+				return 'Invalid date entered.';
+			}
+		}
+		return null;
 	}
 
 

@@ -46,20 +46,29 @@
 			"key" : "past-date-event",
 			"name" : "Event for determining 'past' dates",
 			"type" : "event-list",
-			"required" : true,
 			"branchingLogic" : { "field" : "no-past-dates", "value" : true }
 		},
 		{
 			"key" : "past-date-field",
 			"name" : "Field for determining 'past' dates",
 			"type" : "field-list",
-			"required" : true,
+			"branchingLogic" : { "field" : "no-past-dates", "value" : true }
+		},
+		{
+			"key" : "past-date",
+			"name" : "Consider dates prior to this date to be in the past",
+			"type" : "text",
 			"branchingLogic" : { "field" : "no-past-dates", "value" : true }
 		},
 		{
 			"key" : "survey-skip-validate",
 			"name" : "Provide option on surveys to continue regardless of whether required fields are complete",
 			"type" : "checkbox"
+		},
+		{
+			"key" : "desc1",
+			"name" : "<script>$(function(){$('input[name=past-date]').attr('type','date')})</script>",
+			"type" : "descriptive"
 		}
 	]
 }

@@ -21,9 +21,15 @@ This will raise a field validation error if a date after the current date is ent
 datetime field. This can be overridden on a per-field basis with the **@ALLOWFUTURE** action tag.
 
 ### Don't allow entry of dates in the past
-This will raise a field validation error if a date before the value in a defined field is entered
-into a date or datetime field. This can be overridden on a per-field basis with the **@ALLOWPAST**
-action tag.
+This will raise a field validation error if a date before a defined value is entered into a date or
+datetime field. This can either be a fixed date value, or can be the date entered in a specific
+field on the record. If both a fixed date and a date field are specified, the validation will be
+performed using the most recent date of the two. This can be overridden on a per-field basis with
+the **@ALLOWPAST** action tag.
+
+Note that when a date field is specified, the validation will only take effect once a value *has
+been submitted* for the field. This is therefore not a reliable means of validating dates on the
+same form as the defined comparison field.
 
 ### Provide option on surveys to continue regardless of whether required fields are complete
 On surveys, if there are required fields which have not been completed, provide the respondant with

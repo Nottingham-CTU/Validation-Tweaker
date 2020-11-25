@@ -8,7 +8,10 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 
 
 
-	function redcap_every_page_before_render()
+	// If the skip validation of required fields option is enabled for surveys, temporarily deem all
+	// required fields to be not required when a survey is submitted using this option.
+
+	public function redcap_every_page_before_render()
 	{
 		if ( $this->getProjectSetting( 'survey-skip-validate' ) &&
 		     $_SERVER['REQUEST_METHOD'] == 'POST' && isset( $_GET['__skipvalidate'] ) &&
@@ -23,7 +26,10 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 
 
 
-	function redcap_every_page_top()
+	// Amend the list of action tags (accessible from the add/edit field window in the instrument
+	// designer) when features which provide extra action tags are enabled.
+
+	public function redcap_every_page_top()
 	{
 		if ( substr( PAGE_FULL, strlen( APP_PATH_WEBROOT ), 26 ) == 'Design/online_designer.php' &&
 		     ( $this->getSystemSetting( 'enable-regex' ) ||
@@ -105,6 +111,8 @@ $(function()
 
 
 
+	// Provide the features on data entry forms (not surveys).
+
 	public function redcap_data_entry_form_top( $project_id, $record=null, $instrument, $event_id,
 	                                            $group_id=null, $repeat_instance=1 )
 	{
@@ -114,6 +122,8 @@ $(function()
 	}
 
 
+
+	// Provide the features on surveys.
 
 	public function redcap_survey_page_top( $project_id, $record=null, $instrument, $event_id,
 	                                        $group_id=null, $survey_hash=null, $response_id=null,
@@ -126,17 +136,28 @@ $(function()
 
 
 
+	// Amend date field validation to block past/future dates as required.
+
 	protected function outputDateValidation( $instrument, $record, $eventID )
 	{
 		$blockFutureDates = $this->getProjectSetting( 'no-future-dates' );
 		$blockPastDates = $this->getProjectSetting( 'no-past-dates' );
+
+		// Stop here if date validation disabled.
+		if ( ! $blockFutureDates && ! $blockPastDates )
+		{
+			return;
+		}
+
 		$listDateFields = [];
 		$listFormFields = \REDCap::getDataDictionary( 'array', false, true, $instrument );
 		$projectEarliestDate = '';
 		$recordEarliestDate = '';
 
+		// If blocking 'past' dates, determine the earliest date allowed.
 		if ( $blockPastDates )
 		{
+			// Get the earliest date for the project, if defined in the module project settings.
 			if ( $this->getProjectSetting( 'past-date' ) != '' )
 			{
 				$projectEarliestDate = $this->getProjectSetting( 'past-date' );
@@ -150,6 +171,7 @@ $(function()
 				}
 			}
 
+			// Determine the earliest date for the record, based on the defined event/field.
 			$earliestDateEvent = $this->getProjectSetting( 'past-date-event' );
 			$earliestDateField = $this->getProjectSetting( 'past-date-field' );
 			if ( $earliestDateEvent != '' && $earliestDateField != '' )
@@ -177,6 +199,7 @@ $(function()
 			}
 		}
 
+		// Apply the validation to each date field on the form as required.
 		foreach ( $listFormFields as $fieldName => $infoField )
 		{
 			$noFutureDate = ( $blockFutureDates &&
@@ -224,6 +247,7 @@ $(function()
 		{
 
 
+			// Output JavaScript to apply the date validation.
 ?>
 <script type="text/javascript">
 $(function()
@@ -283,13 +307,18 @@ $(function()
 
 
 
+	// Output JavaScript to prevent form submission (with status = complete) when a field contains
+	// an invalid value, or a required field has not been completed.
+
 	protected function outputEnforceValidation( $instrument )
 	{
+		// Stop here if validation enforcement is disabled.
 		if ( ! $this->getProjectSetting( 'enforce-validation' ) )
 		{
 			return;
 		}
 
+		// Identify required fields.
 		$listFormFields = \REDCap::getDataDictionary( 'array', false, true, $instrument );
 		$reqFields = '';
 		foreach ( $listFormFields as $fieldName => $infoField )
@@ -314,6 +343,7 @@ $(function()
 		}
 
 
+		// Output JavaScript.
 ?>
 <script type="text/javascript">
 $(function()
@@ -372,13 +402,18 @@ $(function()
 
 
 
+	// Output JavaScript to perform regular expression validation on fields.
+
 	protected function outputRegexValidation( $instrument )
 	{
+		// Stop here if regular expression validation is disabled.
 		if ( ! $this->getSystemSetting( 'enable-regex' ) )
 		{
 			return;
 		}
 
+		// Get and check the regular expressions for each field. Any invalid regular expressions
+		// will be ignored.
 		$listRegexFields = [];
 		$listFormFields = \REDCap::getDataDictionary( 'array', false, true, $instrument );
 
@@ -406,6 +441,7 @@ $(function()
 		{
 
 
+			// Output JavaScript.
 ?>
 <script type="text/javascript">
 $(function()
@@ -458,13 +494,19 @@ $(function()
 
 
 
+	// Output JavaScript to provide a 'continue anyway' link on surveys when an error message
+	// appears due to incomplete required fields.
+
 	protected function outputSurveyValidationSkip()
 	{
+		// Stop here if skip required fields validation not enabled.
 		if ( ! $this->getProjectSetting( 'survey-skip-validate' ) )
 		{
 			return;
 		}
 
+
+		// Output JavaScript.
 ?>
 <script type="text/javascript">
 $(function()
@@ -507,6 +549,8 @@ $(function()
 	}
 
 
+
+	// Module settings validation.
 
 	public function validateSettings( $settings )
 	{

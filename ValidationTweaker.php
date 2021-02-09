@@ -382,7 +382,7 @@ $(function()
 
   $('[id^="submit-btn-save"]').each( function()
   {
-    $(this).data('click', this.onclick)
+    var vOldOnClick = this.onclick
     this.onclick = function( ev )
     {
       if ( ! vFnEnforceValidation() )
@@ -390,7 +390,7 @@ $(function()
         alert( 'Please fix any field validation errors before submitting the form as complete.' )
         return false
       }
-      return $(this).data('click').call( this, ev )
+      return vOldOnClick.call( this, ev )
     }
   })
 })

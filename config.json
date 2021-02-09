@@ -1,0 +1,74 @@
+{
+	"name" : "Validation Tweaker",
+	"namespace" : "Nottingham\\ValidationTweaker",
+	"description" : "Make adjustments to data validation.",
+	"permissions" : [
+		"redcap_every_page_before_render",
+		"redcap_every_page_top",
+		"redcap_data_entry_form_top",
+		"redcap_survey_page_top"
+	],
+	"authors" : [
+		{
+			"name" : "Richard Dooley",
+			"email" : "richard.dooley@nottingham.ac.uk",
+			"institution" : "University of Nottingham"
+		}
+	],
+	"framework-version" : 3,
+	"compatibility" : {
+		"redcap-version-min" : "9.6.5"
+	},
+	"system-settings" : [
+		{
+			"key" : "enable-regex",
+			"name" : "Enable regular expression action tag",
+			"type" : "checkbox"
+		}
+	],
+	"project-settings" : [
+		{
+			"key" : "enforce-validation",
+			"name" : "Require field validation to pass on form submission",
+			"type" : "checkbox"
+		},
+		{
+			"key" : "no-future-dates",
+			"name" : "Don't allow entry of dates in the future<br>(after current date)",
+			"type" : "checkbox"
+		},
+		{
+			"key" : "no-past-dates",
+			"name" : "Don't allow entry of dates in the past<br>(before defined date)",
+			"type" : "checkbox"
+		},
+		{
+			"key" : "past-date-event",
+			"name" : "Event for determining 'past' dates",
+			"type" : "event-list",
+			"branchingLogic" : { "field" : "no-past-dates", "value" : true }
+		},
+		{
+			"key" : "past-date-field",
+			"name" : "Field for determining 'past' dates",
+			"type" : "field-list",
+			"branchingLogic" : { "field" : "no-past-dates", "value" : true }
+		},
+		{
+			"key" : "past-date",
+			"name" : "Consider dates prior to this date to be in the past",
+			"type" : "text",
+			"branchingLogic" : { "field" : "no-past-dates", "value" : true }
+		},
+		{
+			"key" : "survey-skip-validate",
+			"name" : "Provide option on surveys to continue regardless of whether required fields are complete",
+			"type" : "checkbox"
+		},
+		{
+			"key" : "desc1",
+			"name" : "<script>$(function(){$('input[name=past-date]').attr('type','date')})</script>",
+			"type" : "descriptive"
+		}
+	]
+}

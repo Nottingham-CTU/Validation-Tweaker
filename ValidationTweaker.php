@@ -470,7 +470,7 @@ $(function()
       vElem.style.backgroundColor = '#FFB7BE'
     }
   }
-  var vFields = JSON.parse('<?php echo json_encode($listRegexFields); ?>')
+  var vFields = JSON.parse('<?php echo addslashes( json_encode($listRegexFields) ); ?>')
   Object.keys( vFields ).forEach( function( vFieldName )
   {
     var vFieldData = vFields[ vFieldName ]

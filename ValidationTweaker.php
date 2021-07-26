@@ -326,19 +326,20 @@ $(function()
 			if ( $infoField['required_field'] == 'y' )
 			{
 				$reqFields .= ( $reqFields == '' ) ? '' : ', ';
+				$reqFields .= '#' . $fieldName . '-tr:visible ';
 				switch ( $infoField['field_type'] )
 				{
 					case 'notes':
-						$reqFields .= 'textarea';
+						$reqFields .= 'textarea[name="' . $fieldName . '"]';
 						break;
 					case 'dropdown':
-						$reqFields .= 'select';
+					case 'sql':
+						$reqFields .= 'select[name="' . $fieldName . '"]';
 						break;
 					default:
-						$reqFields .= 'input';
+						$reqFields .= 'input[name="' . $fieldName . '"]';
 						break;
 				}
-				$reqFields .= '[name="' . $fieldName . '"]:visible';
 			}
 		}
 

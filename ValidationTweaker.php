@@ -254,7 +254,7 @@ $(function()
 {
   var vFields = JSON.parse('<?php echo json_encode($listDateFields); ?>')
   var vNow = new Date()
-  vNow = new Date( vNow.getTime() - ( vNow.getTimezoneOffset() * 60000 ) )
+  vNow = new Date( vNow.getTime() + 900000 - ( vNow.getTimezoneOffset() * 60000 ) )
   vNow = vNow.toISOString().replace( 'T', ' ' )
   Object.keys( vFields ).forEach( function( vFieldName )
   {

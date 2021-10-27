@@ -254,7 +254,7 @@ $(function()
 {
   var vFields = JSON.parse('<?php echo json_encode($listDateFields); ?>')
   var vNow = new Date()
-  vNow = new Date( vNow.getTime() - ( vNow.getTimezoneOffset() * 60000 ) )
+  vNow = new Date( vNow.getTime() + 900000 - ( vNow.getTimezoneOffset() * 60000 ) )
   vNow = vNow.toISOString().replace( 'T', ' ' )
   Object.keys( vFields ).forEach( function( vFieldName )
   {
@@ -326,19 +326,20 @@ $(function()
 			if ( $infoField['required_field'] == 'y' )
 			{
 				$reqFields .= ( $reqFields == '' ) ? '' : ', ';
+				$reqFields .= '#' . $fieldName . '-tr:visible ';
 				switch ( $infoField['field_type'] )
 				{
 					case 'notes':
-						$reqFields .= 'textarea';
+						$reqFields .= 'textarea[name="' . $fieldName . '"]';
 						break;
 					case 'dropdown':
-						$reqFields .= 'select';
+					case 'sql':
+						$reqFields .= 'select[name="' . $fieldName . '"]';
 						break;
 					default:
-						$reqFields .= 'input';
+						$reqFields .= 'input[name="' . $fieldName . '"]';
 						break;
 				}
-				$reqFields .= '[name="' . $fieldName . '"]:visible';
 			}
 		}
 

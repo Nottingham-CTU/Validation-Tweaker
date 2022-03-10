@@ -318,31 +318,71 @@ $(function()
 			return;
 		}
 
-		// Identify required fields.
-		$listFormFields = \REDCap::getDataDictionary( 'array', false, true, $instrument );
-		$reqFields = '';
-		foreach ( $listFormFields as $fieldName => $infoField )
+		// Check if any enforcement exemptions apply to this form.
+		$checkReqFields = true;
+		$checkValues = true;
+		if ( $this->getProjectSetting( 'enforce-validation-exempt-forms' ) )
 		{
-			if ( $infoField['required_field'] == 'y' )
+			$listExemptForms = $this->getProjectSetting( 'enforce-validation-exempt-form' );
+			$listExemptModes = $this->getProjectSetting( 'enforce-validation-exempt-mode' );
+			for ( $i = 0; $i < count( $listExemptForms ); $i++ )
 			{
-				$reqFields .= ( $reqFields == '' ) ? '' : ', ';
-				$reqFields .= '#' . $fieldName . '-tr:visible ';
-				switch ( $infoField['field_type'] )
+				if ( $listExemptForms[$i] == $instrument )
 				{
-					case 'notes':
-						$reqFields .= 'textarea[name="' . $fieldName . '"]';
-						break;
-					case 'dropdown':
-					case 'sql':
-						$reqFields .= 'select[name="' . $fieldName . '"]';
-						break;
-					default:
-						$reqFields .= 'input[name="' . $fieldName . '"]';
-						break;
+					if ( $listExemptModes[$i] == 'A' )
+					{
+						// Exempt from all validation enforcement.
+						return;
+					}
+					if ( $listExemptModes[$i] == 'R' )
+					{
+						// Exempt from required field enforcement.
+						$checkReqFields = false;
+					}
+					if ( $listExemptModes[$i] == 'V' )
+					{
+						// Exempt from value validation enforcement.
+						$checkValues = false;
+					}
+					break;
 				}
 			}
 		}
 
+		// Identify required fields.
+		$reqFields = '';
+		if ( $checkReqFields )
+		{
+			$listFormFields = \REDCap::getDataDictionary( 'array', false, true, $instrument );
+			foreach ( $listFormFields as $fieldName => $infoField )
+			{
+				if ( $infoField['required_field'] == 'y' )
+				{
+					$reqFields .= ( $reqFields == '' ) ? '' : ', ';
+					$reqFields .= '#' . $fieldName . '-tr:visible ';
+					switch ( $infoField['field_type'] )
+					{
+						case 'notes':
+							$reqFields .= 'textarea[name="' . $fieldName . '"]';
+							break;
+						case 'dropdown':
+						case 'sql':
+							$reqFields .= 'select[name="' . $fieldName . '"]';
+							break;
+						default:
+							$reqFields .= 'input[name="' . $fieldName . '"]';
+							break;
+					}
+				}
+			}
+		}
+
+		// Generate the alert text.
+		$enforceText = 'Please ' . ( $checkReqFields ? 'answer all required fields ' : '' ) .
+		               ( $checkReqFields && $checkValues ? 'and ' : '' ) .
+		               ( $checkValues ? 'fix any field validation errors ' : '' ) .
+		               'before submitting the form as complete.';
+		$enforceText = json_encode( $enforceText );
 
 		// Output JavaScript.
 ?>
@@ -363,7 +403,8 @@ $(function()
     {
       return true
     }
-    if ( $('input[style*="background-color: rgb(255, 183, 190)"]:visible, ' +
+    if ( <?php echo $checkValues ? 'true' : 'false'; ?> &&
+         $('input[style*="background-color: rgb(255, 183, 190)"]:visible, ' +
            'textarea[style*="background-color: rgb(255, 183, 190)"]:visible, ' +
            'select[style*="background-color: rgb(255, 183, 190)"]:visible').length > 0 )
     {
@@ -381,19 +422,16 @@ $(function()
     return vIsValid
   }
 
-  $('[id^="submit-btn-save"]').each( function()
+  var vFnOldDataEntrySubmit = dataEntrySubmit
+  dataEntrySubmit = function ( ob )
   {
-    var vOldOnClick = this.onclick
-    this.onclick = function( ev )
+    if ( ! vFnEnforceValidation() )
     {
-      if ( ! vFnEnforceValidation() )
-      {
-        alert( 'Please fix any field validation errors before submitting the form as complete.' )
-        return false
-      }
-      return vOldOnClick.call( this, ev )
+      simpleDialog( <?php echo $enforceText; ?> )
+      return false
     }
-  })
+    return vFnOldDataEntrySubmit( ob )
+  }
 })
 </script>
 <?php
@@ -555,25 +593,59 @@ $(function()
 
 	public function validateSettings( $settings )
 	{
+		$errMsg = '';
+
+		if ( $settings['enforce-validation'] && $settings['enforce-validation-exempt-forms'] )
+		{
+			$listExemptForms = [];
+			for ( $i = 0; $i < count( $settings['enforce-validation-exempt'] ); $i++ )
+			{
+				if ( $settings['enforce-validation-exempt-form'][$i] == '' )
+				{
+					$errMsg .= "\n- Exempt form " . ($i+1) . " is missing.";
+				}
+				elseif ( in_array( $settings['enforce-validation-exempt-form'][$i],
+				                   $listExemptForms ) )
+				{
+					$errMsg .= "\n- Exempt form " . ($i+1) . " is a duplicate.";
+				}
+				else
+				{
+					$listExemptForms[] = $settings['enforce-validation-exempt-form'][$i];
+				}
+				if ( $settings['enforce-validation-exempt-mode'][$i] == '' )
+				{
+					$errMsg .= "\n- Exemption mode " . ($i+1) . " is missing.";
+				}
+			}
+		}
+
 		if ( $settings['no-past-dates'] )
 		{
 			if ( ( $settings['past-date-event'] == '' && $settings['past-date-field'] != '' ) ||
 			     ( $settings['past-date-event'] != '' && $settings['past-date-field'] == '' ) )
 			{
-				return 'To determine past dates by field, both event and field must be specified.';
+				$errMsg .= "\n- To determine past dates by field, both event and field must be " .
+				           "specified.";
 			}
 			if ( $settings['past-date-event'] == '' && $settings['past-date'] == '' )
 			{
-				return 'To disallow entry of dates in the past, either an event/field or a fixed ' .
-				       'date must be specified to determine past dates.';
+				$errMsg .= "\n- To disallow entry of dates in the past, either an event/field " .
+				           "or a fixed date must be specified to determine past dates.";
 			}
 			if ( $settings['past-date'] != '' &&
 			     ! preg_match( '/^[0-9]{4}-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])$/',
 			                   $settings['past-date'] ) )
 			{
-				return 'Invalid date entered.';
+				$errMsg .= "\n- Invalid date entered for determining past dates.";
 			}
 		}
+
+		if ( $errMsg != '' )
+		{
+			return "Your configuration contains errors:$errMsg";
+		}
+
 		return null;
 	}
 

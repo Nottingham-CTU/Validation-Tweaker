@@ -16,6 +16,11 @@ This will check that when forms are submitted with status set to complete, that 
 validation errors and no empty required fields. Submission will be blocked if there is a validation
 error or an empty required field.
 
+### Exempt specific forms from validation enforcement
+If field validation is required to pass on form submission, this option allows some forms to be
+exempted from the validation enforcement. Each form selected can be exempted from enforcement of
+all validation, validation of required fields, or validation of values (format validation).
+
 ### Don't allow entry of dates in the future
 This will raise a field validation error if a date after the current date is entered into a date or
 datetime field. This can be overridden on a per-field basis with the **@ALLOWFUTURE** action tag.

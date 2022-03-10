@@ -33,6 +33,42 @@
 			"type" : "checkbox"
 		},
 		{
+			"key" : "enforce-validation-exempt-forms",
+			"name" : "Exempt specific forms from validation enforcement",
+			"type" : "checkbox",
+			"branchingLogic" : { "field" : "enforce-validation", "value" : true }
+		},
+		{
+			"key" : "enforce-validation-exempt",
+			"name" : "Exemption",
+			"type" : "sub_settings",
+			"repeatable" : true,
+			"branchingLogic" : { "field" : "enforce-validation-exempt-forms", "value" : true },
+			"sub_settings" : [
+				{
+					"key" : "enforce-validation-exempt-form",
+					"name" : "Exempt form",
+					"type" : "form-list"
+				},
+				{
+					"key" : "enforce-validation-exempt-mode",
+					"name" : "Exemption mode",
+					"type" : "dropdown",
+					"choices" : [
+						{ "value" : "A", "name" : "Exempt from all validation" },
+						{ "value" : "R", "name" : "Exempt from required field validation" },
+						{ "value" : "V", "name" : "Exempt from value validation" }
+					]
+				}
+			]
+		},
+		{
+			"key" : "desc1",
+			"name" : "",
+			"type" : "descriptive",
+			"branchingLogic" : { "field" : "enforce-validation-exempt-forms", "value" : true }
+		},
+		{
 			"key" : "no-future-dates",
 			"name" : "Don't allow entry of dates in the future<br>(after current date)",
 			"type" : "checkbox"
@@ -66,7 +102,7 @@
 			"type" : "checkbox"
 		},
 		{
-			"key" : "desc1",
+			"key" : "desc2",
 			"name" : "<script>$(function(){$('input[name=past-date]').attr('type','date')})</script>",
 			"type" : "descriptive"
 		}

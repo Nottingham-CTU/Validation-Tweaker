@@ -26,6 +26,10 @@ This will raise a field validation error if a date after the current date is ent
 datetime field. This can be overridden on a per-field basis with the **@ALLOWFUTURE** action tag.
 
 ### Don't allow entry of dates in the past
+*This feature is deprecated and only available to administrators on REDCap v12.1.0 and later,
+except where it has been previously enabled. It is recommended that the dynamic min/max range
+limits be used instead.*
+
 This will raise a field validation error if a date before a defined value is entered into a date or
 datetime field. This can either be a fixed date value, or can be the date entered in a specific
 field on the record. If both a fixed date and a date field are specified, the validation will be

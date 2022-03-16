@@ -5,6 +5,30 @@ namespace Nottingham\ValidationTweaker;
 class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 {
 	const VTYPE = 'text_validation_type_or_show_slider_number';
+	const VMIN = 'text_validation_min';
+
+
+
+	// Amend the settings for REDCap v12.1.0 and greater.
+
+	public function redcap_module_configuration_settings( $project_id, $settings )
+	{
+		if ( $project_id !== null && \REDCap::versionCompare( REDCAP_VERSION, '12.1.0' ) >= 0 &&
+		     ! $this->getProjectSetting( 'no-past-dates', $project_id ) &&
+		     ! $this->framework->getUser()->isSuperUser() )
+		{
+			foreach ( $settings as $k => $v )
+			{
+				if ( $v['key'] == 'no-past-dates' )
+				{
+					$settings[$k]['branchingLogic'] =
+						[ 'field' => 'no-past-dates', 'value' => true ];
+					break;
+				}
+			}
+		}
+		return $settings;
+	}
 
 
 
@@ -175,7 +199,8 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 
 				$notBefore = '';
 
-				if ( $noPastDate )
+				if ( $noPastDate && ! in_array( $infoField[ self::VMIN ], [ 'now', 'today' ] ) &&
+				     substr( trim( $infoField[ self::VMIN ] ), 0, 1 ) != '[' )
 				{
 					$notBefore = $projectEarliestDate;
 					if ( ( $notBefore == '' || $notBefore < $recordEarliestDate ) &&
@@ -194,6 +219,17 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 
 		if ( count( $listDateFields ) > 0 )
 		{
+			if ( \REDCap::versionCompare( REDCAP_VERSION, '12.1.0' ) >= 0 )
+			{
+				$newRC = 'true';
+				$nowJS = "new Date( vNow.getTime() - ( vNow.getTimezoneOffset() * 60000 ) )\n";
+			}
+			else
+			{
+				$newRC = 'false';
+				$nowJS =
+					"new Date( vNow.getTime() + 900000 - ( vNow.getTimezoneOffset() * 60000 ) )\n";
+			}
 
 
 			// Output JavaScript to apply the date validation.
@@ -203,7 +239,7 @@ $(function()
 {
   var vFields = JSON.parse('<?php echo json_encode($listDateFields); ?>')
   var vNow = new Date()
-  vNow = new Date( vNow.getTime() + 900000 - ( vNow.getTimezoneOffset() * 60000 ) )
+  vNow = <?php echo $nowJS; ?>
   vNow = vNow.toISOString().replace( 'T', ' ' )
   Object.keys( vFields ).forEach( function( vFieldName )
   {
@@ -222,6 +258,7 @@ $(function()
     }
     if ( vOldBlur === null )
     {
+      vNotAfter = ( <?php echo $newRC; ?> && vFieldData.nofuture ? 'now' : vNotAfter )
       vFieldObj.onblur = function()
       {
         redcap_validate( this, vNotBefore, vNotAfter, 'hard', vFieldData.type, 1 )
@@ -229,21 +266,30 @@ $(function()
     }
     else
     {
-      var vFuncStrParts = vOldBlur.toString().match(/redcap_validate\((.*?,)'(.*?)','(.*?)'(,.*)\)/)
+      var vFuncStrParts = vOldBlur.toString().match(/redcap_validate\((.*?,)(.*?),(.*?)(,.*)\)/)
       var vFuncStrStart = vFuncStrParts[1]
       var vEarliest = vFuncStrParts[2]
+      var vEarliestVal = vEarliest.match(/^(.*: *)?'(.*)'\)?$/)[2]
       var vLatest = vFuncStrParts[3]
+      var vLatestVal = vLatest.match(/^(.*: *)?'(.*)'\)?$/)[2]
       var vFuncStrEnd = vFuncStrParts[4]
-      if ( vEarliest.localeCompare( vNotBefore ) < 0 )
+      if ( vNotBefore != '' && vEarliestVal.localeCompare( vNotBefore ) < 0 )
       {
-        vEarliest = vNotBefore
+        vEarliest = "'" + vNotBefore + "'"
       }
-      if ( vLatest == '' || ( vNotAfter != '' && vLatest.localeCompare( vNotAfter ) > 0 ) )
+      if ( vLatestVal == '' || ( vNotAfter != '' && vLatestVal != 'today' && vLatestVal != 'now' ) )
       {
-        vLatest = vNotAfter
+        if ( <?php echo $newRC; ?> && vFieldData.nofuture )
+        {
+          vLatest = "(" + vLatest + ".localeCompare('" + vNotAfter + "')>0?'now':" + vLatest + ")"
+        }
+        else if ( vLatestVal.localeCompare( vNotAfter ) > 0 )
+        {
+          vLatest = "'" + vNotAfter + "'"
+        }
       }
-      vFieldObj.onblur = new Function( 'redcap_validate(' + vFuncStrStart + "'" + vEarliest +
-                                       "','" + vLatest + "'" + vFuncStrEnd + ')' )
+      vFieldObj.onblur = new Function( 'redcap_validate(' + vFuncStrStart + vEarliest +
+                                       "," + vLatest + vFuncStrEnd + ')' )
     }
   })
 })

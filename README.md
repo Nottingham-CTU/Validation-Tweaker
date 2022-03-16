@@ -44,3 +44,7 @@ same form as the defined comparison field.
 On surveys, if there are required fields which have not been completed, provide the respondant with
 the option to *continue anyway*. This will, following a warning, allow them to proceed despite the
 survey not being complete.
+
+### Exempt specific forms from survey continue option
+If the option to allow a survey submission despite incomplete required fields is selected, this
+option allows some forms to be exempted from this.

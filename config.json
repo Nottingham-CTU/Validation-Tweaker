@@ -102,6 +102,19 @@
 			"type" : "checkbox"
 		},
 		{
+			"key" : "survey-skip-validate-exempt-forms",
+			"name" : "Exempt specific forms from survey continue option",
+			"type" : "checkbox",
+			"branchingLogic" : { "field" : "survey-skip-validate", "value" : true }
+		},
+		{
+			"key" : "survey-skip-validate-exempt-form",
+			"name" : "Exempt form",
+			"type" : "form-list",
+			"repeatable" : true,
+			"branchingLogic" : { "field" : "survey-skip-validate-exempt-forms", "value" : true }
+		},
+		{
 			"key" : "desc2",
 			"name" : "<script>$(function(){$('input[name=past-date]').attr('type','date')})</script>",
 			"type" : "descriptive"

@@ -104,7 +104,7 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 	{
 		$this->outputDateValidation( $instrument, $record, $event_id );
 		$this->outputRegexValidation( $instrument );
-		$this->outputSurveyValidationSkip();
+		$this->outputSurveyValidationSkip( $instrument );
 	}
 
 
@@ -531,12 +531,22 @@ $(function()
 	// Output JavaScript to provide a 'continue anyway' link on surveys when an error message
 	// appears due to incomplete required fields.
 
-	protected function outputSurveyValidationSkip()
+	protected function outputSurveyValidationSkip( $instrument )
 	{
 		// Stop here if skip required fields validation not enabled.
 		if ( ! $this->getProjectSetting( 'survey-skip-validate' ) )
 		{
 			return;
+		}
+
+		// Stop here if the survey is exempted from this feature.
+		if ( $this->getProjectSetting( 'survey-skip-validate-exempt-forms' ) )
+		{
+			if ( in_array( $instrument,
+			               $this->getProjectSetting( 'survey-skip-validate-exempt-form' ) ) )
+			{
+				return;
+			}
 		}
 
 
@@ -672,12 +682,14 @@ $(function()
 			{
 				if ( $settings['enforce-validation-exempt-form'][$i] == '' )
 				{
-					$errMsg .= "\n- Exempt form " . ($i+1) . " is missing.";
+					$errMsg .= "\n- Exempt form (from validation enforcement) " . ($i+1) .
+					           " is missing.";
 				}
 				elseif ( in_array( $settings['enforce-validation-exempt-form'][$i],
 				                   $listExemptForms ) )
 				{
-					$errMsg .= "\n- Exempt form " . ($i+1) . " is a duplicate.";
+					$errMsg .= "\n- Exempt form (from validation enforcement) " . ($i+1) .
+					           " is a duplicate.";
 				}
 				else
 				{
@@ -685,7 +697,8 @@ $(function()
 				}
 				if ( $settings['enforce-validation-exempt-mode'][$i] == '' )
 				{
-					$errMsg .= "\n- Exemption mode " . ($i+1) . " is missing.";
+					$errMsg .= "\n- Exemption mode (from validation enforcement) " . ($i+1) .
+					           " is missing.";
 				}
 			}
 		}
@@ -708,6 +721,28 @@ $(function()
 			                   $settings['past-date'] ) )
 			{
 				$errMsg .= "\n- Invalid date entered for determining past dates.";
+			}
+		}
+
+		if ( $settings['survey-skip-validate'] && $settings['survey-skip-validate-exempt-forms'] )
+		{
+			$listExemptForms = [];
+			for ( $i = 0; $i < count( $settings['survey-skip-validate-exempt-form'] ); $i++ )
+			{
+				if ( $settings['survey-skip-validate-exempt-form'][$i] == '' )
+				{
+					$errMsg .= "\n- Exempt form (from survey continue) " . ($i+1) . " is missing.";
+				}
+				elseif ( in_array( $settings['survey-skip-validate-exempt-form'][$i],
+				                   $listExemptForms ) )
+				{
+					$errMsg .= "\n- Exempt form (from survey continue) " . ($i+1) .
+					           " is a duplicate.";
+				}
+				else
+				{
+					$listExemptForms[] = $settings['survey-skip-validate-exempt-form'][$i];
+				}
 			}
 		}
 

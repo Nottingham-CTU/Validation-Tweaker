@@ -353,21 +353,22 @@ $(function()
 			{
 				if ( $infoField['required_field'] == 'y' )
 				{
-					$reqFields .= ( $reqFields == '' ) ? '' : ', ';
-					$reqFields .= '#' . $fieldName . '-tr:visible ';
 					switch ( $infoField['field_type'] )
 					{
 						case 'notes':
-							$reqFields .= 'textarea[name="' . $fieldName . '"]';
+							$fieldSelector = 'textarea[name="' . $fieldName . '"]';
 							break;
 						case 'dropdown':
 						case 'sql':
-							$reqFields .= 'select[name="' . $fieldName . '"]';
+							$fieldSelector = 'select[name="' . $fieldName . '"]';
 							break;
 						default:
-							$reqFields .= 'input[name="' . $fieldName . '"]';
+							$fieldSelector = 'input[name="' . $fieldName . '"]';
 							break;
 					}
+					$reqFields .= ( ( $reqFields == '' ) ? '' : ', ' ) . '#' . $fieldName .
+					              '-tr:visible ' . $fieldSelector . ', span.rc-field-embed[var="' .
+					              $fieldName . '"]:visible ' . $fieldSelector;
 				}
 			}
 		}

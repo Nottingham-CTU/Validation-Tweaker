@@ -1,7 +1,7 @@
 {
 	"name" : "Validation Tweaker",
 	"namespace" : "Nottingham\\ValidationTweaker",
-	"description" : "Make adjustments to data validation.",
+	"description" : "Provides options to adjust the enforcement of field validation and adds additional validation features.",
 	"permissions" : [
 		"redcap_every_page_before_render",
 		"redcap_every_page_top",

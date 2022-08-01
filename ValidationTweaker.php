@@ -243,7 +243,12 @@ $(function()
   vNow = vNow.toISOString().replace( 'T', ' ' )
   Object.keys( vFields ).forEach( function( vFieldName )
   {
-    var vFieldObj = $('input[name="' + vFieldName + '"]')[0]
+    var vFieldObj = $('input[name="' + vFieldName + '"]')
+    if ( vFieldObj.length < 1 )
+    {
+      return
+    }
+    vFieldObj = vFieldObj[0]
     var vFieldData = vFields[ vFieldName ]
     var vOldBlur = vFieldObj.onblur
     var vNotBefore = ''
@@ -511,12 +516,17 @@ $(function()
     var vFieldData = vFields[ vFieldName ]
     if ( vFieldData.type == 'notes' )
     {
-      var vFieldObj = $('textarea[name="' + vFieldName + '"]')[0]
+      var vFieldObj = $('textarea[name="' + vFieldName + '"]')
     }
     else
     {
-      var vFieldObj = $('input[name="' + vFieldName + '"]')[0]
+      var vFieldObj = $('input[name="' + vFieldName + '"]')
     }
+    if ( vFieldObj.length < 1 )
+    {
+      return
+    }
+    vFieldObj = vFieldObj[0]
     vFieldObj.onblur = function() { vFuncRegexValidate( this, vFieldData.regex ) }
   })
 })

@@ -5,6 +5,30 @@ namespace Nottingham\ValidationTweaker;
 class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 {
 	const VTYPE = 'text_validation_type_or_show_slider_number';
+	const VMIN = 'text_validation_min';
+
+
+
+	// Amend the settings for REDCap v12.1.0 and greater.
+
+	public function redcap_module_configuration_settings( $project_id, $settings )
+	{
+		if ( $project_id !== null && \REDCap::versionCompare( REDCAP_VERSION, '12.1.0' ) >= 0 &&
+		     ! $this->getProjectSetting( 'no-past-dates', $project_id ) &&
+		     ! $this->framework->getUser()->isSuperUser() )
+		{
+			foreach ( $settings as $k => $v )
+			{
+				if ( $v['key'] == 'no-past-dates' )
+				{
+					$settings[$k]['branchingLogic'] =
+						[ 'field' => 'no-past-dates', 'value' => true ];
+					break;
+				}
+			}
+		}
+		return $settings;
+	}
 
 
 
@@ -31,81 +55,30 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 
 	public function redcap_every_page_top()
 	{
-		if ( substr( PAGE_FULL, strlen( APP_PATH_WEBROOT ), 26 ) == 'Design/online_designer.php' &&
-		     ( $this->getSystemSetting( 'enable-regex' ) ||
-		       $this->getProjectSetting( 'no-future-dates' ) ||
-		       $this->getProjectSetting( 'no-past-dates' ) ) )
+		if ( substr( PAGE_FULL, strlen( APP_PATH_WEBROOT ), 26 ) == 'Design/online_designer.php' ||
+		     substr( PAGE_FULL, strlen( APP_PATH_WEBROOT ), 22 ) == 'ProjectSetup/index.php' )
 		{
-?>
-<script type="text/javascript">
-$(function()
-{
-  var vActionTagPopup = actionTagExplainPopup
-  var vMakeRow = function( tag, desc, position, insertAfter = false )
-  {
-    var vRow = $( '<tr>' + $('tr:has(td.nowrap:contains("' + position + '")):eq(0)').html() + '</tr>' )
-    vRow.find('td:eq(1)').html( tag )
-    vRow.find('td:eq(2)').html( desc )
-    vRow.find('button').attr('onclick', vRow.find('button').attr('onclick').replace(position,tag))
-    if ( insertAfter )
-    {
-      $('tr:has(td.nowrap:contains("' + position + '")):eq(0)').after( vRow )
-    }
-    else
-    {
-      $('tr:has(td.nowrap:contains("' + position + '")):eq(0)').before( vRow )
-    }
-  }
-  actionTagExplainPopup = function( hideBtns )
-  {
-    vActionTagPopup( hideBtns )
-    var vCheckTagsPopup = setInterval( function()
-    {
-      if ( $('div[aria-describedby="action_tag_explain_popup"]').length == 0 )
-      {
-        return
-      }
-      clearInterval( vCheckTagsPopup )
-<?php
-
+			$listActionTags = [];
 			if ( $this->getSystemSetting( 'enable-regex' ) )
 			{
-
-?>
-      vMakeRow( '@REGEX', 'Validate a field according to a regular expression. The format must ' +
-                          'follow the pattern @REGEX=\'????\', in which the pattern is inside ' +
-                          'single or double quotes.',
-                          '@READONLY-SURVEY', true )
-<?php
-
+				$listActionTags['@REGEX'] =
+					'Validate a field according to a regular expression. The format must follow ' .
+					'the pattern @REGEX=\'????\', in which the pattern is inside single or ' .
+					'double quotes.';
 			}
 			if ( $this->getProjectSetting( 'no-future-dates' ) )
 			{
-
-?>
-      vMakeRow( '@ALLOWFUTURE', 'For a date or datetime field, override the validation ' +
-                                'prohibiting dates in the future (after current date).',
-                                '@CHARLIMIT' )
-<?php
-
+				$listActionTags['@ALLOWFUTURE'] =
+					'For a date or datetime field, override the validation prohibiting dates in ' .
+					'the future (after current date).';
 			}
 			if ( $this->getProjectSetting( 'no-past-dates' ) )
 			{
-
-?>
-      vMakeRow( '@ALLOWPAST', 'For a date or datetime field, override the validation prohibiting ' +
-                              'dates in the past (before defined date in module settings).',
-                              '@CHARLIMIT' )
-<?php
-
+				$listActionTags['@ALLOWPAST'] =
+					'For a date or datetime field, override the validation prohibiting dates in ' .
+					'the past (before defined date in module settings).';
 			}
-
-?>
-    }, 100 )
-  }
-})
-</script>
-<?php
+			$this->provideActionTagExplain( $listActionTags );
 		}
 	}
 
@@ -131,7 +104,7 @@ $(function()
 	{
 		$this->outputDateValidation( $instrument, $record, $event_id );
 		$this->outputRegexValidation( $instrument );
-		$this->outputSurveyValidationSkip();
+		$this->outputSurveyValidationSkip( $instrument );
 	}
 
 
@@ -226,7 +199,8 @@ $(function()
 
 				$notBefore = '';
 
-				if ( $noPastDate )
+				if ( $noPastDate && ! in_array( $infoField[ self::VMIN ], [ 'now', 'today' ] ) &&
+				     substr( trim( $infoField[ self::VMIN ] ), 0, 1 ) != '[' )
 				{
 					$notBefore = $projectEarliestDate;
 					if ( ( $notBefore == '' || $notBefore < $recordEarliestDate ) &&
@@ -245,6 +219,17 @@ $(function()
 
 		if ( count( $listDateFields ) > 0 )
 		{
+			if ( \REDCap::versionCompare( REDCAP_VERSION, '12.1.0' ) >= 0 )
+			{
+				$newRC = 'true';
+				$nowJS = "new Date( vNow.getTime() - ( vNow.getTimezoneOffset() * 60000 ) )\n";
+			}
+			else
+			{
+				$newRC = 'false';
+				$nowJS =
+					"new Date( vNow.getTime() + 900000 - ( vNow.getTimezoneOffset() * 60000 ) )\n";
+			}
 
 
 			// Output JavaScript to apply the date validation.
@@ -254,11 +239,16 @@ $(function()
 {
   var vFields = JSON.parse('<?php echo json_encode($listDateFields); ?>')
   var vNow = new Date()
-  vNow = new Date( vNow.getTime() + 900000 - ( vNow.getTimezoneOffset() * 60000 ) )
+  vNow = <?php echo $nowJS; ?>
   vNow = vNow.toISOString().replace( 'T', ' ' )
   Object.keys( vFields ).forEach( function( vFieldName )
   {
-    var vFieldObj = $('input[name="' + vFieldName + '"]')[0]
+    var vFieldObj = $('input[name="' + vFieldName + '"]')
+    if ( vFieldObj.length < 1 )
+    {
+      return
+    }
+    vFieldObj = vFieldObj[0]
     var vFieldData = vFields[ vFieldName ]
     var vOldBlur = vFieldObj.onblur
     var vNotBefore = ''
@@ -273,6 +263,7 @@ $(function()
     }
     if ( vOldBlur === null )
     {
+      vNotAfter = ( <?php echo $newRC; ?> && vFieldData.nofuture ? 'now' : vNotAfter )
       vFieldObj.onblur = function()
       {
         redcap_validate( this, vNotBefore, vNotAfter, 'hard', vFieldData.type, 1 )
@@ -280,21 +271,30 @@ $(function()
     }
     else
     {
-      var vFuncStrParts = vOldBlur.toString().match(/redcap_validate\((.*?,)'(.*?)','(.*?)'(,.*)\)/)
+      var vFuncStrParts = vOldBlur.toString().match(/redcap_validate\((.*?,)(.*?),(.*?)(,.*)\)/)
       var vFuncStrStart = vFuncStrParts[1]
       var vEarliest = vFuncStrParts[2]
+      var vEarliestVal = vEarliest.match(/^(.*: *)?'(.*)'\)?$/)[2]
       var vLatest = vFuncStrParts[3]
+      var vLatestVal = vLatest.match(/^(.*: *)?'(.*)'\)?$/)[2]
       var vFuncStrEnd = vFuncStrParts[4]
-      if ( vEarliest.localeCompare( vNotBefore ) < 0 )
+      if ( vNotBefore != '' && vEarliestVal.localeCompare( vNotBefore ) < 0 )
       {
-        vEarliest = vNotBefore
+        vEarliest = "'" + vNotBefore + "'"
       }
-      if ( vLatest == '' || ( vNotAfter != '' && vLatest.localeCompare( vNotAfter ) > 0 ) )
+      if ( vLatestVal == '' || ( vNotAfter != '' && vLatestVal != 'today' && vLatestVal != 'now' ) )
       {
-        vLatest = vNotAfter
+        if ( <?php echo $newRC; ?> && vFieldData.nofuture )
+        {
+          vLatest = "(" + vLatest + ".localeCompare('" + vNotAfter + "')>0?'now':" + vLatest + ")"
+        }
+        else if ( vLatestVal.localeCompare( vNotAfter ) > 0 )
+        {
+          vLatest = "'" + vNotAfter + "'"
+        }
       }
-      vFieldObj.onblur = new Function( 'redcap_validate(' + vFuncStrStart + "'" + vEarliest +
-                                       "','" + vLatest + "'" + vFuncStrEnd + ')' )
+      vFieldObj.onblur = new Function( 'redcap_validate(' + vFuncStrStart + vEarliest +
+                                       "," + vLatest + vFuncStrEnd + ')' )
     }
   })
 })
@@ -318,31 +318,72 @@ $(function()
 			return;
 		}
 
-		// Identify required fields.
-		$listFormFields = \REDCap::getDataDictionary( 'array', false, true, $instrument );
-		$reqFields = '';
-		foreach ( $listFormFields as $fieldName => $infoField )
+		// Check if any enforcement exemptions apply to this form.
+		$checkReqFields = true;
+		$checkValues = true;
+		if ( $this->getProjectSetting( 'enforce-validation-exempt-forms' ) )
 		{
-			if ( $infoField['required_field'] == 'y' )
+			$listExemptForms = $this->getProjectSetting( 'enforce-validation-exempt-form' );
+			$listExemptModes = $this->getProjectSetting( 'enforce-validation-exempt-mode' );
+			for ( $i = 0; $i < count( $listExemptForms ); $i++ )
 			{
-				$reqFields .= ( $reqFields == '' ) ? '' : ', ';
-				$reqFields .= '#' . $fieldName . '-tr:visible ';
-				switch ( $infoField['field_type'] )
+				if ( $listExemptForms[$i] == $instrument )
 				{
-					case 'notes':
-						$reqFields .= 'textarea[name="' . $fieldName . '"]';
-						break;
-					case 'dropdown':
-					case 'sql':
-						$reqFields .= 'select[name="' . $fieldName . '"]';
-						break;
-					default:
-						$reqFields .= 'input[name="' . $fieldName . '"]';
-						break;
+					if ( $listExemptModes[$i] == 'A' )
+					{
+						// Exempt from all validation enforcement.
+						return;
+					}
+					if ( $listExemptModes[$i] == 'R' )
+					{
+						// Exempt from required field enforcement.
+						$checkReqFields = false;
+					}
+					if ( $listExemptModes[$i] == 'V' )
+					{
+						// Exempt from value validation enforcement.
+						$checkValues = false;
+					}
+					break;
 				}
 			}
 		}
 
+		// Identify required fields.
+		$reqFields = '';
+		if ( $checkReqFields )
+		{
+			$listFormFields = \REDCap::getDataDictionary( 'array', false, true, $instrument );
+			foreach ( $listFormFields as $fieldName => $infoField )
+			{
+				if ( $infoField['required_field'] == 'y' )
+				{
+					switch ( $infoField['field_type'] )
+					{
+						case 'notes':
+							$fieldSelector = 'textarea[name="' . $fieldName . '"]';
+							break;
+						case 'dropdown':
+						case 'sql':
+							$fieldSelector = 'select[name="' . $fieldName . '"]';
+							break;
+						default:
+							$fieldSelector = 'input[name="' . $fieldName . '"]';
+							break;
+					}
+					$reqFields .= ( ( $reqFields == '' ) ? '' : ', ' ) . '#' . $fieldName .
+					              '-tr:visible ' . $fieldSelector . ', span.rc-field-embed[var="' .
+					              $fieldName . '"]:visible ' . $fieldSelector;
+				}
+			}
+		}
+
+		// Generate the alert text.
+		$enforceText = 'Please ' . ( $checkReqFields ? 'answer all required fields ' : '' ) .
+		               ( $checkReqFields && $checkValues ? 'and ' : '' ) .
+		               ( $checkValues ? 'fix any field validation errors ' : '' ) .
+		               'before submitting the form as complete.';
+		$enforceText = json_encode( $enforceText );
 
 		// Output JavaScript.
 ?>
@@ -363,7 +404,8 @@ $(function()
     {
       return true
     }
-    if ( $('input[style*="background-color: rgb(255, 183, 190)"]:visible, ' +
+    if ( <?php echo $checkValues ? 'true' : 'false'; ?> &&
+         $('input[style*="background-color: rgb(255, 183, 190)"]:visible, ' +
            'textarea[style*="background-color: rgb(255, 183, 190)"]:visible, ' +
            'select[style*="background-color: rgb(255, 183, 190)"]:visible').length > 0 )
     {
@@ -381,19 +423,16 @@ $(function()
     return vIsValid
   }
 
-  $('[id^="submit-btn-save"]').each( function()
+  var vFnOldDataEntrySubmit = dataEntrySubmit
+  dataEntrySubmit = function ( ob )
   {
-    var vOldOnClick = this.onclick
-    this.onclick = function( ev )
+    if ( ! vFnEnforceValidation() )
     {
-      if ( ! vFnEnforceValidation() )
-      {
-        alert( 'Please fix any field validation errors before submitting the form as complete.' )
-        return false
-      }
-      return vOldOnClick.call( this, ev )
+      simpleDialog( <?php echo $enforceText; ?> )
+      return false
     }
-  })
+    return vFnOldDataEntrySubmit( ob )
+  }
 })
 </script>
 <?php
@@ -477,12 +516,17 @@ $(function()
     var vFieldData = vFields[ vFieldName ]
     if ( vFieldData.type == 'notes' )
     {
-      var vFieldObj = $('textarea[name="' + vFieldName + '"]')[0]
+      var vFieldObj = $('textarea[name="' + vFieldName + '"]')
     }
     else
     {
-      var vFieldObj = $('input[name="' + vFieldName + '"]')[0]
+      var vFieldObj = $('input[name="' + vFieldName + '"]')
     }
+    if ( vFieldObj.length < 1 )
+    {
+      return
+    }
+    vFieldObj = vFieldObj[0]
     vFieldObj.onblur = function() { vFuncRegexValidate( this, vFieldData.regex ) }
   })
 })
@@ -498,12 +542,22 @@ $(function()
 	// Output JavaScript to provide a 'continue anyway' link on surveys when an error message
 	// appears due to incomplete required fields.
 
-	protected function outputSurveyValidationSkip()
+	protected function outputSurveyValidationSkip( $instrument )
 	{
 		// Stop here if skip required fields validation not enabled.
 		if ( ! $this->getProjectSetting( 'survey-skip-validate' ) )
 		{
 			return;
+		}
+
+		// Stop here if the survey is exempted from this feature.
+		if ( $this->getProjectSetting( 'survey-skip-validate-exempt-forms' ) )
+		{
+			if ( in_array( $instrument,
+			               $this->getProjectSetting( 'survey-skip-validate-exempt-form' ) ) )
+			{
+				return;
+			}
 		}
 
 
@@ -551,29 +605,163 @@ $(function()
 
 
 
+
+
+	// Output JavaScript to amend the action tags guide.
+
+	function provideActionTagExplain( $listActionTags )
+	{
+		if ( empty( $listActionTags ) )
+		{
+			return;
+		}
+		$listActionTagsJS = [];
+		foreach ( $listActionTags as $t => $d )
+		{
+			$listActionTagsJS[] = [ $t, $d ];
+		}
+		$listActionTagsJS = json_encode( $listActionTagsJS );
+
+?>
+<script type="text/javascript">
+$(function()
+{
+  var vActionTagPopup = actionTagExplainPopup
+  var vMakeRow = function(vTag, vDesc, vTable)
+  {
+    var vRow = $( '<tr>' + vTable.find('tr:first').html() + '</tr>' )
+    var vOldTag = vRow.find('td:eq(1)').html()
+    var vButton = vRow.find('button')
+    vRow.find('td:eq(1)').html(vTag)
+    vRow.find('td:eq(2)').html(vDesc)
+    if ( vButton.length != 0 )
+    {
+      vButton.attr('onclick', vButton.attr('onclick').replace(vOldTag,vTag))
+    }
+    var vRows = vTable.find('tr')
+    var vInserted = false
+    for ( var i = 0; i < vRows.length; i++ )
+    {
+      var vA = vRows.eq(i).find('td:eq(1)').html()
+      if ( vTag < vRows.eq(i).find('td:eq(1)').html() )
+      {
+        vRows.eq(i).before(vRow)
+        vInserted = true
+        break
+      }
+    }
+    if ( ! vInserted )
+    {
+      vRows.last().after(vRow)
+    }
+  }
+  actionTagExplainPopup = function(hideBtns)
+  {
+    vActionTagPopup(hideBtns)
+    var vCheckTagsPopup = setInterval( function()
+    {
+      if ( $('div[aria-describedby="action_tag_explain_popup"]').length == 0 )
+      {
+        return
+      }
+      clearInterval( vCheckTagsPopup )
+      var vActionTagTable = $('#action_tag_explain_popup table');
+      <?php echo $listActionTagsJS; ?>.forEach(function(vItem)
+      {
+        vMakeRow(vItem[0],vItem[1],vActionTagTable)
+      })
+    }, 200 )
+  }
+})
+</script>
+<?php
+
+	}
+
+
+
 	// Module settings validation.
 
 	public function validateSettings( $settings )
 	{
+		$errMsg = '';
+
+		if ( $settings['enforce-validation'] && $settings['enforce-validation-exempt-forms'] )
+		{
+			$listExemptForms = [];
+			for ( $i = 0; $i < count( $settings['enforce-validation-exempt'] ); $i++ )
+			{
+				if ( $settings['enforce-validation-exempt-form'][$i] == '' )
+				{
+					$errMsg .= "\n- Exempt form (from validation enforcement) " . ($i+1) .
+					           " is missing.";
+				}
+				elseif ( in_array( $settings['enforce-validation-exempt-form'][$i],
+				                   $listExemptForms ) )
+				{
+					$errMsg .= "\n- Exempt form (from validation enforcement) " . ($i+1) .
+					           " is a duplicate.";
+				}
+				else
+				{
+					$listExemptForms[] = $settings['enforce-validation-exempt-form'][$i];
+				}
+				if ( $settings['enforce-validation-exempt-mode'][$i] == '' )
+				{
+					$errMsg .= "\n- Exemption mode (from validation enforcement) " . ($i+1) .
+					           " is missing.";
+				}
+			}
+		}
+
 		if ( $settings['no-past-dates'] )
 		{
 			if ( ( $settings['past-date-event'] == '' && $settings['past-date-field'] != '' ) ||
 			     ( $settings['past-date-event'] != '' && $settings['past-date-field'] == '' ) )
 			{
-				return 'To determine past dates by field, both event and field must be specified.';
+				$errMsg .= "\n- To determine past dates by field, both event and field must be " .
+				           "specified.";
 			}
 			if ( $settings['past-date-event'] == '' && $settings['past-date'] == '' )
 			{
-				return 'To disallow entry of dates in the past, either an event/field or a fixed ' .
-				       'date must be specified to determine past dates.';
+				$errMsg .= "\n- To disallow entry of dates in the past, either an event/field " .
+				           "or a fixed date must be specified to determine past dates.";
 			}
 			if ( $settings['past-date'] != '' &&
 			     ! preg_match( '/^[0-9]{4}-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])$/',
 			                   $settings['past-date'] ) )
 			{
-				return 'Invalid date entered.';
+				$errMsg .= "\n- Invalid date entered for determining past dates.";
 			}
 		}
+
+		if ( $settings['survey-skip-validate'] && $settings['survey-skip-validate-exempt-forms'] )
+		{
+			$listExemptForms = [];
+			for ( $i = 0; $i < count( $settings['survey-skip-validate-exempt-form'] ); $i++ )
+			{
+				if ( $settings['survey-skip-validate-exempt-form'][$i] == '' )
+				{
+					$errMsg .= "\n- Exempt form (from survey continue) " . ($i+1) . " is missing.";
+				}
+				elseif ( in_array( $settings['survey-skip-validate-exempt-form'][$i],
+				                   $listExemptForms ) )
+				{
+					$errMsg .= "\n- Exempt form (from survey continue) " . ($i+1) .
+					           " is a duplicate.";
+				}
+				else
+				{
+					$listExemptForms[] = $settings['survey-skip-validate-exempt-form'][$i];
+				}
+			}
+		}
+
+		if ( $errMsg != '' )
+		{
+			return "Your configuration contains errors:$errMsg";
+		}
+
 		return null;
 	}
 

@@ -1,7 +1,7 @@
 {
 	"name" : "Validation Tweaker",
 	"namespace" : "Nottingham\\ValidationTweaker",
-	"description" : "Make adjustments to data validation.",
+	"description" : "Provides options to adjust the enforcement of field validation and adds additional validation features.",
 	"permissions" : [
 		"redcap_every_page_before_render",
 		"redcap_every_page_top",
@@ -31,6 +31,42 @@
 			"key" : "enforce-validation",
 			"name" : "Require field validation to pass on form submission",
 			"type" : "checkbox"
+		},
+		{
+			"key" : "enforce-validation-exempt-forms",
+			"name" : "Exempt specific forms from validation enforcement",
+			"type" : "checkbox",
+			"branchingLogic" : { "field" : "enforce-validation", "value" : true }
+		},
+		{
+			"key" : "enforce-validation-exempt",
+			"name" : "Exemption",
+			"type" : "sub_settings",
+			"repeatable" : true,
+			"branchingLogic" : { "field" : "enforce-validation-exempt-forms", "value" : true },
+			"sub_settings" : [
+				{
+					"key" : "enforce-validation-exempt-form",
+					"name" : "Exempt form",
+					"type" : "form-list"
+				},
+				{
+					"key" : "enforce-validation-exempt-mode",
+					"name" : "Exemption mode",
+					"type" : "dropdown",
+					"choices" : [
+						{ "value" : "A", "name" : "Exempt from all validation" },
+						{ "value" : "R", "name" : "Exempt from required field validation" },
+						{ "value" : "V", "name" : "Exempt from value validation" }
+					]
+				}
+			]
+		},
+		{
+			"key" : "desc1",
+			"name" : "",
+			"type" : "descriptive",
+			"branchingLogic" : { "field" : "enforce-validation-exempt-forms", "value" : true }
 		},
 		{
 			"key" : "no-future-dates",
@@ -66,7 +102,20 @@
 			"type" : "checkbox"
 		},
 		{
-			"key" : "desc1",
+			"key" : "survey-skip-validate-exempt-forms",
+			"name" : "Exempt specific forms from survey continue option",
+			"type" : "checkbox",
+			"branchingLogic" : { "field" : "survey-skip-validate", "value" : true }
+		},
+		{
+			"key" : "survey-skip-validate-exempt-form",
+			"name" : "Exempt form",
+			"type" : "form-list",
+			"repeatable" : true,
+			"branchingLogic" : { "field" : "survey-skip-validate-exempt-forms", "value" : true }
+		},
+		{
+			"key" : "desc2",
 			"name" : "<script>$(function(){$('input[name=past-date]').attr('type','date')})</script>",
 			"type" : "descriptive"
 		}

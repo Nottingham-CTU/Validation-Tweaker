@@ -16,11 +16,20 @@ This will check that when forms are submitted with status set to complete, that 
 validation errors and no empty required fields. Submission will be blocked if there is a validation
 error or an empty required field.
 
+### Exempt specific forms from validation enforcement
+If field validation is required to pass on form submission, this option allows some forms to be
+exempted from the validation enforcement. Each form selected can be exempted from enforcement of
+all validation, validation of required fields, or validation of values (format validation).
+
 ### Don't allow entry of dates in the future
 This will raise a field validation error if a date after the current date is entered into a date or
 datetime field. This can be overridden on a per-field basis with the **@ALLOWFUTURE** action tag.
 
 ### Don't allow entry of dates in the past
+*This feature is deprecated and only available to administrators on REDCap v12.1.0 and later,
+except where it has been previously enabled. It is recommended that the dynamic min/max range
+limits be used instead.*
+
 This will raise a field validation error if a date before a defined value is entered into a date or
 datetime field. This can either be a fixed date value, or can be the date entered in a specific
 field on the record. If both a fixed date and a date field are specified, the validation will be
@@ -35,3 +44,7 @@ same form as the defined comparison field.
 On surveys, if there are required fields which have not been completed, provide the respondant with
 the option to *continue anyway*. This will, following a warning, allow them to proceed despite the
 survey not being complete.
+
+### Exempt specific forms from survey continue option
+If the option to allow a survey submission despite incomplete required fields is selected, this
+option allows some forms to be exempted from this.

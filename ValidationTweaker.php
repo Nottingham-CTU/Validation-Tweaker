@@ -151,7 +151,9 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 			{
 				$recordEarliestDate =
 					\REDCap::getData( 'array', $record, $earliestDateField, $earliestDateEvent )
-						[ $record ][ $earliestDateEvent ][ $earliestDateField ];
+						[ $record ][ $earliestDateEvent ][ $earliestDateField ] ?? '';
+				$recordEarliestDate = array_reduce( [ $recordEarliestDate ],
+				                                    function( $c, $i ) { return $c . $i; }, '' );
 				if ( $recordEarliestDate != '' &&
 				     preg_match( '/^[0-9]{4}-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])/',
 				                 $recordEarliestDate ) )
@@ -288,7 +290,8 @@ $(function()
         {
           vLatest = "(" + vLatest + ".localeCompare('" + vNotAfter + "')>0?'now':" + vLatest + ")"
         }
-        else if ( vLatestVal.localeCompare( vNotAfter ) > 0 )
+        else if ( ( vLatestVal == '' && vNotAfter != '' ) ||
+                  vLatestVal.localeCompare( vNotAfter ) > 0 )
         {
           vLatest = "'" + vNotAfter + "'"
         }

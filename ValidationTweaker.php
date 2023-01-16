@@ -288,7 +288,14 @@ $(function()
       {
         if ( <?php echo $newRC; ?> && vFieldData.nofuture )
         {
-          vLatest = "(" + vLatest + ".localeCompare('" + vNotAfter + "')>0?'now':" + vLatest + ")"
+          if ( vLatestVal == '' )
+          {
+            vLatest = "'now'"
+          }
+          else
+          {
+            vLatest = "(" + vLatest + ".localeCompare('" + vNotAfter + "')>0?'now':" + vLatest + ")"
+          }
         }
         else if ( ( vLatestVal == '' && vNotAfter != '' ) ||
                   vLatestVal.localeCompare( vNotAfter ) > 0 )

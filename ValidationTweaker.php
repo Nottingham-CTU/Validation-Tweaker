@@ -290,11 +290,12 @@ $(function()
         {
           if ( vLatestVal == '' )
           {
-            vLatest = "'now'"
+            vLatest = ( vFieldData.len == 10 ? "'today'" : "'now'" )
           }
           else
           {
-            vLatest = "(" + vLatest + ".localeCompare('" + vNotAfter + "')>0?'now':" + vLatest + ")"
+            vLatest = "(" + vLatest + ".localeCompare('" + vNotAfter + "')>0?" +
+                      ( vFieldData.len == 10 ? 'today' : 'now' ) + ":" + vLatest + ")"
           }
         }
         else if ( ( vLatestVal == '' && vNotAfter != '' ) ||

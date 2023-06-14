@@ -378,6 +378,9 @@ $(function()
 						case 'sql':
 							$fieldSelector = 'select[name="' . $fieldName . '"]';
 							break;
+						case 'checkbox':
+							$fieldSelector = 'input[name="__chkn__' . $fieldName . '"]';
+							break;
 						default:
 							$fieldSelector = 'input[name="' . $fieldName . '"]';
 							break;
@@ -423,14 +426,37 @@ $(function()
       return false
     }
     var vIsValid = true
+    var vCheckboxValid = {}
+    var vCheckboxNames = []
     $('<?php echo $reqFields; ?>').each( function()
     {
-      if ( $(this).val() === '' )
+      if ( $(this).attr('type') == 'checkbox' )
+      {
+        if ( vCheckboxValid[ $(this).attr('name') ] === undefined )
+        {
+          vCheckboxValid[ $(this).attr('name') ] = false
+          vCheckboxNames.push( $(this).attr('name') )
+        }
+        if ( $(this).prop('checked') )
+        {
+          vCheckboxValid[ $(this).attr('name') ] = true
+        }
+      }
+      else if ( $(this).val() === '' )
       {
         vIsValid = false
-        return
       }
     })
+    if ( vIsValid )
+    {
+      vCheckboxNames.forEach( function( vCheckboxName )
+      {
+        if ( ! vCheckboxValid[ vCheckboxName ] )
+        {
+          vIsValid = false
+        }
+      })
+    }
     return vIsValid
   }
 

@@ -75,24 +75,24 @@
 		},
 		{
 			"key" : "no-past-dates",
-			"name" : "Don't allow entry of dates in the past<br>(before defined date)",
+			"name" : "* Don't allow entry of dates in the past<br>(before defined date)",
 			"type" : "checkbox"
 		},
 		{
 			"key" : "past-date-event",
-			"name" : "Event for determining 'past' dates",
+			"name" : "* Event for determining 'past' dates",
 			"type" : "event-list",
 			"branchingLogic" : { "field" : "no-past-dates", "value" : true }
 		},
 		{
 			"key" : "past-date-field",
-			"name" : "Field for determining 'past' dates",
+			"name" : "* Field for determining 'past' dates",
 			"type" : "field-list",
 			"branchingLogic" : { "field" : "no-past-dates", "value" : true }
 		},
 		{
 			"key" : "past-date",
-			"name" : "Consider dates prior to this date to be in the past",
+			"name" : "* Consider dates prior to this date to be in the past",
 			"type" : "text",
 			"branchingLogic" : { "field" : "no-past-dates", "value" : true }
 		},

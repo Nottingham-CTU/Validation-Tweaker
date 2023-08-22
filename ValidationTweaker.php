@@ -451,7 +451,8 @@ $(function()
     {
       vCheckboxNames.forEach( function( vCheckboxName )
       {
-        if ( ! vCheckboxValid[ vCheckboxName ] )
+        if ( ! vCheckboxValid[ vCheckboxName ] &&
+             $( '#' + vCheckboxName.substring(8) + '_MDLabel' ).text() == '' )
         {
           vIsValid = false
         }

@@ -2,12 +2,6 @@
 	"name" : "Validation Tweaker",
 	"namespace" : "Nottingham\\ValidationTweaker",
 	"description" : "Provides options to adjust the enforcement of field validation and adds additional validation features.",
-	"permissions" : [
-		"redcap_every_page_before_render",
-		"redcap_every_page_top",
-		"redcap_data_entry_form_top",
-		"redcap_survey_page_top"
-	],
 	"authors" : [
 		{
 			"name" : "Richard Dooley",
@@ -15,9 +9,11 @@
 			"institution" : "University of Nottingham"
 		}
 	],
-	"framework-version" : 3,
+	"framework-version" : 12,
 	"compatibility" : {
-		"redcap-version-min" : "9.6.5"
+		"redcap-version-min" : "13.1.5",
+		"php-version-min" : "8.0.0",
+		"php-version-max" : "8.99.99"
 	},
 	"system-settings" : [
 		{

@@ -9,29 +9,6 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 
 
 
-	// Amend the settings for REDCap v12.1.0 and greater.
-
-	public function redcap_module_configuration_settings( $project_id, $settings )
-	{
-		if ( $project_id !== null && \REDCap::versionCompare( REDCAP_VERSION, '12.1.0' ) >= 0 &&
-		     ! $this->getProjectSetting( 'no-past-dates', $project_id ) &&
-		     ! $this->framework->getUser()->isSuperUser() )
-		{
-			foreach ( $settings as $k => $v )
-			{
-				if ( $v['key'] == 'no-past-dates' )
-				{
-					$settings[$k]['branchingLogic'] =
-						[ 'field' => 'no-past-dates', 'value' => true ];
-					break;
-				}
-			}
-		}
-		return $settings;
-	}
-
-
-
 	// If the skip validation of required fields option is enabled for surveys, temporarily deem all
 	// required fields to be not required when a survey is submitted using this option.
 
@@ -114,77 +91,29 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 	protected function outputDateValidation( $instrument, $record, $eventID )
 	{
 		$blockFutureDates = $this->getProjectSetting( 'no-future-dates' );
-		$blockPastDates = $this->getProjectSetting( 'no-past-dates' );
 
 		// Stop here if date validation disabled.
-		if ( ! $blockFutureDates && ! $blockPastDates )
+		if ( ! $blockFutureDates )
 		{
 			return;
 		}
 
 		$listDateFields = [];
 		$listFormFields = \REDCap::getDataDictionary( 'array', false, true, $instrument );
-		$projectEarliestDate = '';
-		$recordEarliestDate = '';
-
-		// If blocking 'past' dates, determine the earliest date allowed.
-		if ( $blockPastDates )
-		{
-			// Get the earliest date for the project, if defined in the module project settings.
-			if ( $this->getProjectSetting( 'past-date' ) != '' )
-			{
-				$projectEarliestDate = $this->getProjectSetting( 'past-date' );
-				if ( strlen( $projectEarliestDate ) == 10 )
-				{
-					$projectEarliestDate .= ' 00:00:00';
-				}
-				elseif ( strlen( $projectEarliestDate ) == 16 )
-				{
-					$projectEarliestDate .= ':00';
-				}
-			}
-
-			// Determine the earliest date for the record, based on the defined event/field.
-			$earliestDateEvent = $this->getProjectSetting( 'past-date-event' );
-			$earliestDateField = $this->getProjectSetting( 'past-date-field' );
-			if ( $earliestDateEvent != '' && $earliestDateField != '' )
-			{
-				$recordEarliestDate =
-					\REDCap::getData( 'array', $record, $earliestDateField, $earliestDateEvent )
-						[ $record ][ $earliestDateEvent ][ $earliestDateField ] ?? '';
-				$recordEarliestDate = array_reduce( [ $recordEarliestDate ],
-				                                    function( $c, $i ) { return $c . $i; }, '' );
-				if ( $recordEarliestDate != '' &&
-				     preg_match( '/^[0-9]{4}-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])/',
-				                 $recordEarliestDate ) )
-				{
-					if ( strlen( $recordEarliestDate ) == 10 )
-					{
-						$recordEarliestDate .= ' 00:00:00';
-					}
-					elseif ( strlen( $recordEarliestDate ) == 16 )
-					{
-						$recordEarliestDate .= ':00';
-					}
-				}
-				else
-				{
-					$recordEarliestDate = '';
-				}
-			}
-		}
 
 		// Apply the validation to each date field on the form as required.
 		foreach ( $listFormFields as $fieldName => $infoField )
 		{
 			$noFutureDate = ( $blockFutureDates &&
 			                !preg_match( '/@ALLOWFUTURE(\s|$)/', $infoField['field_annotation'] ) );
-			$noPastDate = ( $blockPastDates &&
-			                !preg_match( '/@ALLOWPAST(\s|$)/', $infoField['field_annotation'] ) );
-			if ( $infoField[ 'field_type' ] == 'text' &&
-			     ( substr( $infoField[ self::VTYPE ], 0, 5 ) == 'date_' ||
-			       substr( $infoField[ self::VTYPE ], 0, 9 ) == 'datetime_' ) &&
-			     ( $noFutureDate || $noPastDate ) )
+			// Skip non date/datetime fields.
+			if ( $infoField[ 'field_type' ] != 'text' ||
+			     ( substr( $infoField[ self::VTYPE ], 0, 5 ) != 'date_' &&
+			       substr( $infoField[ self::VTYPE ], 0, 9 ) != 'datetime_' ) )
+			{
+				continue;
+			}
+			if ( $noFutureDate )
 			{
 				if ( substr( $infoField[ self::VTYPE ], 0, 17 ) == 'datetime_seconds_' )
 				{
@@ -199,39 +128,13 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 					$fieldLength = 10;
 				}
 
-				$notBefore = '';
-
-				if ( $noPastDate && ! in_array( $infoField[ self::VMIN ], [ 'now', 'today' ] ) &&
-				     substr( trim( $infoField[ self::VMIN ] ), 0, 1 ) != '[' )
-				{
-					$notBefore = $projectEarliestDate;
-					if ( ( $notBefore == '' || $notBefore < $recordEarliestDate ) &&
-					     ( $earliestDateEvent != $eventID || $earliestDateField != $fieldName ) )
-					{
-						$notBefore = $recordEarliestDate;
-					}
-				}
-
 				$listDateFields[ $fieldName ] = [ 'type' => $infoField[ self::VTYPE ],
-				                                  'len' => $fieldLength,
-				                                  'nofuture' => $noFutureDate,
-				                                  'notbefore' => $notBefore ];
+				                                  'len' => $fieldLength ];
 			}
 		}
 
 		if ( count( $listDateFields ) > 0 )
 		{
-			if ( \REDCap::versionCompare( REDCAP_VERSION, '12.1.0' ) >= 0 )
-			{
-				$newRC = 'true';
-				$nowJS = "new Date( vNow.getTime() - ( vNow.getTimezoneOffset() * 60000 ) )\n";
-			}
-			else
-			{
-				$newRC = 'false';
-				$nowJS =
-					"new Date( vNow.getTime() + 900000 - ( vNow.getTimezoneOffset() * 60000 ) )\n";
-			}
 
 
 			// Output JavaScript to apply the date validation.
@@ -241,7 +144,7 @@ $(function()
 {
   var vFields = JSON.parse('<?php echo json_encode($listDateFields); ?>')
   var vNow = new Date()
-  vNow = <?php echo $nowJS; ?>
+  vNow = new Date( vNow.getTime() - ( vNow.getTimezoneOffset() * 60000 ) )
   vNow = vNow.toISOString().replace( 'T', ' ' )
   Object.keys( vFields ).forEach( function( vFieldName )
   {
@@ -253,56 +156,30 @@ $(function()
     vFieldObj = vFieldObj[0]
     var vFieldData = vFields[ vFieldName ]
     var vOldBlur = vFieldObj.onblur
-    var vNotBefore = ''
-    var vNotAfter = ''
-    if ( vFieldData.notbefore != '' )
-    {
-      vNotBefore = vFieldData.notbefore.slice( 0, vFieldData.len )
-    }
-    if ( vFieldData.nofuture )
-    {
-      vNotAfter = vNow.slice( 0, vFieldData.len )
-    }
     if ( vOldBlur === null )
     {
-      vNotAfter = ( <?php echo $newRC; ?> && vFieldData.nofuture ? 'now' : vNotAfter )
       vFieldObj.onblur = function()
       {
-        redcap_validate( this, vNotBefore, vNotAfter, 'hard', vFieldData.type, 1 )
+        redcap_validate( this, '', 'now', 'hard', vFieldData.type, 1 )
       }
     }
     else
     {
+      var vNotAfter = vNow.slice( 0, vFieldData.len )
       var vFuncStrParts = vOldBlur.toString().match(/redcap_validate\((.*?,)(.*?),(.*?)(,.*)\)/)
       var vFuncStrStart = vFuncStrParts[1]
       var vEarliest = vFuncStrParts[2]
-      var vEarliestVal = vEarliest.match(/^(.*: *)?'(.*)'\)?$/)[2]
       var vLatest = vFuncStrParts[3]
       var vLatestVal = vLatest.match(/^(.*: *)?'(.*)'\)?$/)[2]
       var vFuncStrEnd = vFuncStrParts[4]
-      if ( vNotBefore != '' && vEarliestVal.localeCompare( vNotBefore ) < 0 )
+      if ( vLatestVal == '' )
       {
-        vEarliest = "'" + vNotBefore + "'"
+        vLatest = ( vFieldData.len == 10 ? "'today'" : "'now'" )
       }
-      if ( vLatestVal == '' || ( vNotAfter != '' && vLatestVal != 'today' && vLatestVal != 'now' ) )
+      else if ( vNotAfter != '' && vLatestVal != 'today' && vLatestVal != 'now' )
       {
-        if ( <?php echo $newRC; ?> && vFieldData.nofuture )
-        {
-          if ( vLatestVal == '' )
-          {
-            vLatest = ( vFieldData.len == 10 ? "'today'" : "'now'" )
-          }
-          else
-          {
-            vLatest = "(" + vLatest + ".localeCompare('" + vNotAfter + "')>0?" +
-                      ( vFieldData.len == 10 ? 'today' : 'now' ) + ":" + vLatest + ")"
-          }
-        }
-        else if ( ( vLatestVal == '' && vNotAfter != '' ) ||
-                  vLatestVal.localeCompare( vNotAfter ) > 0 )
-        {
-          vLatest = "'" + vNotAfter + "'"
-        }
+        vLatest = "(" + vLatest + ".localeCompare('" + vNotAfter + "')>0?" +
+                  ( vFieldData.len == 10 ? 'today' : 'now' ) + ":" + vLatest + ")"
       }
       vFieldObj.onblur = new Function( 'redcap_validate(' + vFuncStrStart + vEarliest +
                                        "," + vLatest + vFuncStrEnd + ')' )
@@ -749,27 +626,6 @@ $(function()
 					$errMsg .= "\n- Exemption mode (from validation enforcement) " . ($i+1) .
 					           " is missing.";
 				}
-			}
-		}
-
-		if ( $settings['no-past-dates'] )
-		{
-			if ( ( $settings['past-date-event'] == '' && $settings['past-date-field'] != '' ) ||
-			     ( $settings['past-date-event'] != '' && $settings['past-date-field'] == '' ) )
-			{
-				$errMsg .= "\n- To determine past dates by field, both event and field must be " .
-				           "specified.";
-			}
-			if ( $settings['past-date-event'] == '' && $settings['past-date'] == '' )
-			{
-				$errMsg .= "\n- To disallow entry of dates in the past, either an event/field " .
-				           "or a fixed date must be specified to determine past dates.";
-			}
-			if ( $settings['past-date'] != '' &&
-			     ! preg_match( '/^[0-9]{4}-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])$/',
-			                   $settings['past-date'] ) )
-			{
-				$errMsg .= "\n- Invalid date entered for determining past dates.";
 			}
 		}
 

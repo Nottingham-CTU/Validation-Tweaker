@@ -96,6 +96,14 @@
 		{
 			"tag" : "@REGEX",
 			"description" : "Validate a field according to a regular expression. The format must follow the pattern @REGEX='????', in which the pattern is inside single or double quotes."
+		},
+		{
+			"tag" : "@VALIDATE-LOGIC",
+			"description" : "Validate a field according to conditional logic. Evaluates logic that is provided inside a @VALIDATE-LOGIC() function and uses the result to determine whether the field is valid."
+		},
+		{
+			"tag" : "@VALIDATE-MESSAGE",
+			"description" : "Provide the message to be displayed if regular expression (@REGEX) or logic (@VALIDATE-LOGIC) validation fails."
 		}
 	]
 }

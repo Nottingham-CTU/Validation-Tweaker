@@ -57,7 +57,7 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 	                                            $group_id=null, $repeat_instance=1 )
 	{
 		$this->outputDateValidation( $instrument, $record, $event_id );
-		$this->outputRegexValidation( $instrument );
+		$this->outputLogicRegexValidation( $instrument, $record, $event_id, $repeat_instance );
 		$this->outputEnforceValidation( $instrument );
 	}
 
@@ -70,7 +70,7 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 	                                        $repeat_instance=1 )
 	{
 		$this->outputDateValidation( $instrument, $record, $event_id );
-		$this->outputRegexValidation( $instrument );
+		$this->outputLogicRegexValidation( $instrument, $record, $event_id, $repeat_instance );
 		$this->outputSurveyValidationSkip( $instrument );
 	}
 
@@ -347,19 +347,16 @@ $(function()
 
 
 
-	// Output JavaScript to perform regular expression validation on fields.
+	// Output JavaScript to perform logic and regular expression validation on fields.
 
-	protected function outputRegexValidation( $instrument )
+	protected function outputLogicRegexValidation( $instrument, $record, $eventID, $instance )
 	{
-		// Stop here if regular expression validation is disabled.
-		if ( ! $this->getSystemSetting( 'enable-regex' ) )
-		{
-			return;
-		}
+		// Check if regular expression validation is enabled.
+		$allowedRegex = $this->getSystemSetting( 'enable-regex' );
 
 		// Get and check the regular expressions for each field. Any invalid regular expressions
 		// will be ignored.
-		$listRegexFields = [];
+		$listLogicFields = [];
 		$listFormFields = \REDCap::getDataDictionary( 'array', false, true, $instrument );
 
 		foreach ( $listFormFields as $fieldName => $infoField )
@@ -367,22 +364,43 @@ $(function()
 			if ( in_array( $infoField[ 'field_type' ], [ 'text', 'notes' ] ) &&
 			     $infoField[ self::VTYPE ] == '' )
 			{
-				$hasRegex = preg_match( "/(^|\\s)@REGEX=((\'[^\'\r\n]*\')|(\"[^\"\r\n]*\"))(\\s|$)/",
-				                        $infoField['field_annotation'], $regexMatches );
-				if ( $hasRegex )
+				$annotation = \Form::replaceIfActionTag( $infoField[ 'field_annotation' ],
+				                                         $this->getProjectId(), $record,
+				                                         $eventID, $instrument, $instance );
+				$hasRegex = false;
+				$fieldRegex = '';
+				if ( $allowedRegex )
 				{
+					$hasRegex = preg_match( "/(^|\\s)@REGEX=((\'[^\'\r\n]*\')|" .
+					                        "(\"[^\"\r\n]*\"))(\\s|$)/",
+					                        $annotation, $regexMatches );
 					$fieldRegex = substr( $regexMatches[ 2 ], 1, -1 );
 					$validRegex = ( preg_match( $regexMatches[ 2 ], '' ) !== false );
-					if ( $validRegex && $fieldRegex != '' )
+					if ( ! $validRegex )
 					{
-						$listRegexFields[ $fieldName ] = [ 'regex' =>$fieldRegex,
-						                                   'type' => $infoField[ 'field_type' ] ];
+						$hasRegex = false;
+						$fieldRegex = '';
 					}
+				}
+				$fieldLogic =
+						\Form::getValueInParenthesesActionTag( $annotation, '@VALIDATE-LOGIC' );
+				if ( $hasRegex || $fieldLogic != '' )
+				{
+					if ( $fieldLogic != '' )
+					{
+						$fieldLogic = \LogicTester::formatLogicToJS( $fieldLogic, false, $eventID,
+						                                             false, $this->getProjectId() );
+					}
+					$message = \Form::getValueInQuotesActionTag( $annotation, '@VALIDATE-MESSAGE' );
+					$listLogicFields[ $fieldName ] = [ 'regex' => $fieldRegex,
+					                                   'logic' => $fieldLogic,
+					                                   'type' => $infoField[ 'field_type' ],
+					                                   'message' => $message ];
 				}
 			}
 		}
 
-		if ( count( $listRegexFields ) > 0 )
+		if ( count( $listLogicFields ) > 0 )
 		{
 
 
@@ -391,10 +409,11 @@ $(function()
 <script type="text/javascript">
 $(function()
 {
-  var vFuncRegexValidate = function ( vElem, vPattern )
+  var vFuncValidate = function ( vElem, vPattern, vLogic, vMessage )
   {
     var vRegex = new RegExp( vPattern )
-    if ( vElem.value == '' || vRegex.test( vElem.value ) )
+    var vLogicResult = vLogic == '' ? true : (new Function('return ' + vLogic))()
+    if ( vElem.value == '' || ( vLogicResult && ( vPattern == '' || vRegex.test( vElem.value ) ) ) )
     {
       vElem.style.fontWeight = 'normal'
       vElem.style.backgroundColor = '#FFFFFF'
@@ -404,6 +423,10 @@ $(function()
       var vPopupID = 'redcapValidationErrorPopup'
       var vPopupMsg = 'The value you provided could not be validated because it does not follow ' +
                       'the expected format. Please try again.'
+      if ( vMessage != '' )
+      {
+        vPopupMsg = vMessage
+      }
       $('#' + vPopupID).remove()
       initDialog( vPopupID )
       $('#' + vPopupID).html(vPopupMsg)
@@ -415,7 +438,7 @@ $(function()
       vElem.style.backgroundColor = '#FFB7BE'
     }
   }
-  var vFields = JSON.parse('<?php echo addslashes( json_encode($listRegexFields) ); ?>')
+  var vFields = JSON.parse('<?php echo addslashes( json_encode($listLogicFields) ); ?>')
   Object.keys( vFields ).forEach( function( vFieldName )
   {
     var vFieldData = vFields[ vFieldName ]
@@ -432,7 +455,10 @@ $(function()
       return
     }
     vFieldObj = vFieldObj[0]
-    vFieldObj.onblur = function() { vFuncRegexValidate( this, vFieldData.regex ) }
+    vFieldObj.onblur = function()
+    {
+      vFuncValidate( this, vFieldData.regex, vFieldData.logic, vFieldData.message )
+    }
   })
 })
 </script>
@@ -541,6 +567,12 @@ $(function()
         if ( vListTagsRemove.includes( vTag ) )
         {
           vRows.eq(i).css('display','none')
+        }
+        if ( vTag == '@VALIDATE-MESSAGE' && vListTagsRemove.includes( '@REGEX' ) )
+        {
+          var vDescription = vRows.eq(i).find('td:eq(2)').html()
+          vDescription = vDescription.replace('regular expression (@REGEX) or ','')
+          vRows.eq(i).find('td:eq(2)').html( vDescription )
         }
       }
     }, 200 )

@@ -56,7 +56,7 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 	public function redcap_data_entry_form_top( $project_id, $record=null, $instrument, $event_id,
 	                                            $group_id=null, $repeat_instance=1 )
 	{
-		$this->outputDateValidation( $instrument, $record, $event_id );
+		$this->outputDateValidation( $instrument, $record, $event_id, $repeat_instance );
 		$this->outputLogicRegexValidation( $instrument, $record, $event_id, $repeat_instance );
 		$this->outputEnforceValidation( $instrument );
 	}
@@ -69,16 +69,16 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 	                                        $group_id=null, $survey_hash=null, $response_id=null,
 	                                        $repeat_instance=1 )
 	{
-		$this->outputDateValidation( $instrument, $record, $event_id );
+		$this->outputDateValidation( $instrument, $record, $event_id, $repeat_instance );
 		$this->outputLogicRegexValidation( $instrument, $record, $event_id, $repeat_instance );
 		$this->outputSurveyValidationSkip( $instrument );
 	}
 
 
 
-	// Amend date field validation to block past/future dates as required.
+	// Amend date field validation to block future dates as required.
 
-	protected function outputDateValidation( $instrument, $record, $eventID )
+	protected function outputDateValidation( $instrument, $record, $eventID, $instance )
 	{
 		$blockFutureDates = $this->getProjectSetting( 'no-future-dates' );
 
@@ -94,8 +94,6 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 		// Apply the validation to each date field on the form as required.
 		foreach ( $listFormFields as $fieldName => $infoField )
 		{
-			$noFutureDate = ( $blockFutureDates &&
-			                !preg_match( '/@ALLOWFUTURE(\s|$)/', $infoField['field_annotation'] ) );
 			// Skip non date/datetime fields.
 			if ( $infoField[ 'field_type' ] != 'text' ||
 			     ( substr( $infoField[ self::VTYPE ], 0, 5 ) != 'date_' &&
@@ -103,6 +101,10 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 			{
 				continue;
 			}
+			$annotation = \Form::replaceIfActionTag( $infoField[ 'field_annotation' ],
+			                                         $this->getProjectId(), $record,
+			                                         $eventID, $instrument, $instance );
+			$noFutureDate = !preg_match( '/@ALLOWFUTURE(\s|$)/', $annotation );
 			if ( $noFutureDate )
 			{
 				if ( substr( $infoField[ self::VTYPE ], 0, 17 ) == 'datetime_seconds_' )

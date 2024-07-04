@@ -14,14 +14,49 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 
 	public function redcap_every_page_before_render()
 	{
-		if ( $this->getProjectSetting( 'survey-skip-validate' ) &&
-		     $_SERVER['REQUEST_METHOD'] == 'POST' && isset( $_GET['__skipvalidate'] ) &&
-		     substr( PAGE_FULL, 0, strlen( APP_PATH_SURVEY ) ) == APP_PATH_SURVEY )
+		// Determine whether this is a data entry page or survey page.
+		$isDataEntryPage = ( substr( PAGE_FULL, strlen( APP_PATH_WEBROOT ), 10 ) == 'DataEntry/' );
+		$isSurveyPage = ( substr( PAGE_FULL, 0, strlen( APP_PATH_SURVEY ) ) == APP_PATH_SURVEY );
+
+		// If this isn't a survey page and a user is not logged in, exit here.
+		if ( ! $isSurveyPage && ! defined('USERID') )
+		{
+			return;
+		}
+
+		// If a survey page, and the skip validation option is enabled and has been used,
+		// temporarily deem all required fields to be not required.
+		if ( $isSurveyPage && $this->getProjectSetting( 'survey-skip-validate' ) &&
+		     $_SERVER['REQUEST_METHOD'] == 'POST' && isset( $_GET['__skipvalidate'] ) )
 		{
 			foreach ($GLOBALS['Proj']->metadata as $fieldName => $fieldData)
 			{
 				$GLOBALS['Proj']->metadata[$fieldName]['field_req'] = 0;
 			}
+		}
+
+		// Convert @DEFAULT-CALC and @RANDOMNUMBER action tags to default values on data entry forms
+		// and survey pages. This is done here as it may be too late when other hooks are called.
+		if ( $isDataEntryPage || $isSurveyPage )
+		{
+			if ( $isDataEntryPage )
+			{
+				$record = intval( $_GET['id'] );
+				$eventID = intval( $_GET['event_id'] );
+				$instance = intval( $_GET['instance'] ?? 1 );
+				$instrument = $_GET['page'];
+			}
+			else
+			{
+				$record = $this->query( 'SELECT r.record FROM redcap_surveys_participants p ' .
+				                        'JOIN redcap_surveys_response r ON p.participant_id = ' .
+				                        'r.participant_id WHERE hash = ?', [ $_GET['s'] ] )
+				                        ->fetch_assoc()['record'];
+				$eventID = $GLOBALS['survey_context']['event_id'];
+				$instance = intval( $_GET['instance'] ?? 1 );
+				$instrument = $GLOBALS['survey_context']['form_name'];
+			}
+			$this->performDefaultValues( $instrument, $record, $eventID, $instance );
 		}
 	}
 
@@ -36,11 +71,17 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 		     substr( PAGE_FULL, strlen( APP_PATH_WEBROOT ), 22 ) == 'ProjectSetup/index.php' )
 		{
 			$listRemoveActionTags = [];
+			if ( ! $this->getSystemSetting( 'enable-default-calc' ) )
+			{
+				$listRemoveActionTags[] = '@DEFAULT-CALC';
+			}
 			if ( ! $this->getSystemSetting( 'enable-regex' ) )
 			{
 				$listRemoveActionTags[] = '@REGEX';
 			}
+			if ( ! $this->getSystemSetting( 'enable-randomnumber' ) )
 			{
+				$listRemoveActionTags[] = '@RANDOMNUMBER';
 			}
 			if ( ! empty( $listRemoveActionTags ) )
 			{
@@ -534,6 +575,85 @@ $(function()
 </script>
 <?php
 
+	}
+
+
+
+
+
+	// Set the default values as required from the @DEFAULT-CALC and @RANDOMNUMBER action tags.
+
+	function performDefaultValues( $instrument, $record, $eventID, $instance )
+	{
+		$hasDefaultCalc = $this->getSystemSetting( 'enable-default-calc' );
+		$hasRandomnumber = $this->getSystemSetting( 'enable-randomnumber' );
+		if ( ! $hasDefaultCalc && ! $hasRandomnumber )
+		{
+			return;
+		}
+		$listFieldNames = \REDCap::getFieldNames( $instrument );
+		foreach ( $listFieldNames as $fieldName )
+		{
+			$annotation = $GLOBALS['Proj']->metadata[$fieldName]['misc'];
+			$annotation = \Form::replaceIfActionTag( $annotation, $this->getProjectId(), $record,
+			                                         $eventID, $instrument, $instance );
+			$defaultCalc = $hasDefaultCalc
+			               ? \Form::getValueInParenthesesActionTag( $annotation, '@DEFAULT-CALC' )
+			               : '';
+			if ( $defaultCalc != '' )
+			{
+				$defaultVal = \REDCap::evaluateLogic( $defaultCalc, $this->getProjectId(),
+				                                      $record, $eventID, $instance,
+				                                      $instrument, $instrument, null, true );
+				$defaultVal = ( strpos( $defaultVal, "'" ) === false )
+				              ? ( "'" . $defaultVal . "'" )
+				              : ( '"' . str_replace( '"', '', $defaultVal ) . '"' );
+				$GLOBALS['Proj']->metadata[$fieldName]['misc'] =
+						"@DEFAULT=" . $defaultVal . " " . $annotation;
+			}
+			elseif ( $hasRandomnumber &&
+			         preg_match( '/(^|\\s)@RANDOMNUMBER(\\((-?[0-9]+,-?[0-9]+)\\))?(\\s|$)/',
+			                     $annotation, $randomnumberMatches ) )
+			{
+				$randomnumber = 0;
+				$randomnumberRange = $randomnumberMatches[3] ?? '';
+				if ( $randomnumberRange == '' )
+				{
+					$randomnumber = random_int( 0, ( PHP_INT_MAX - 1 ) ) / PHP_INT_MAX;
+					$decimalPlaces = -1;
+					$validationType =
+							$GLOBALS['Proj']->metadata[$fieldName]['element_validation_type'];
+					if ( $validationType == 'integer' || $validationType == 'int' )
+					{
+						$decimalPlaces = 0;
+					}
+					elseif ( strpos( $validationType, 'number_' ) === 0 )
+					{
+						$decimalPlaces = intval( substr( $validationType, 7, 1 ) );
+					}
+					if ( $decimalPlaces > -1 )
+					{
+						$randomnumber = round( $randomnumber, $decimalPlaces );
+					}
+					if ( strpos( $validationType, '_comma_decimal' ) !== false )
+					{
+						$randomnumber = str_replace( '.', ',', $randomnumber );
+					}
+				}
+				else
+				{
+					$randomnumberRange = explode( ',', $randomnumberRange );
+					if ( $randomnumberRange[0] > $randomnumberRange[1] )
+					{
+						$randomnumberRange[1] = $randomnumberRange[0];
+					}
+					$randomnumber = random_int( intval( $randomnumberRange[0] ),
+					                            intval( $randomnumberRange[1] ) );
+				}
+				$GLOBALS['Proj']->metadata[$fieldName]['misc'] =
+						"@DEFAULT='" . $randomnumber . "' " . $annotation;
+			}
+		}
 	}
 
 

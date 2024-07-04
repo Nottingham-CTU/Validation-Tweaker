@@ -17,8 +17,18 @@
 	},
 	"system-settings" : [
 		{
+			"key" : "enable-default-calc",
+			"name" : "Enable calculated default value (@DEFAULT-CALC) action tag",
+			"type" : "checkbox"
+		},
+		{
 			"key" : "enable-regex",
-			"name" : "Enable regular expression action tag",
+			"name" : "Enable regular expression (@REGEX) action tag",
+			"type" : "checkbox"
+		},
+		{
+			"key" : "enable-randomnumber",
+			"name" : "Enable random number (@RANDOMNUMBER) action tag",
 			"type" : "checkbox"
 		}
 	],
@@ -92,6 +102,14 @@
 		{
 			"tag" : "@ALLOWFUTURE",
 			"description" : "If the option in the Validation Tweaker module project settings to prohibit entry of dates by default in the future (after current date) is enabled, use this action tag on a date or datetime field to override this validation."
+		},
+		{
+			"tag" : "@DEFAULT-CALC",
+			"description" : "Evaluates logic that is provided inside a @DEFAULT-CALC() function and sets the field's initial value to the result of the calculation. This allows a field to have a specified default value when viewing the field on a survey or data entry form that has not yet had any data saved for it (i.e., when the form status icon is gray or when a survey page has not had any data entered yet). NOTE: The default value does *not* get applied during any data imports (via API or Data Import Tool) but only operates when viewing survey pages and data entry forms."
+		},
+		{
+			"tag" : "@RANDOMNUMBER",
+			"description" : "Loads a cryptographically secure random number into a blank text field. If the field has validation, the value will adjust to match the number format. The number returned will be a decimal value between 0 and 1, unless the action tag is used in the format @RANDOMNUMBER(x,y) where x and y are two numbers, in which case the number returned will be an integer between x and y (inclusive). NOTE: The random number does not get applied during any data imports (via API or Data Import Tool) but only operates when viewing survey pages and data entry forms."
 		},
 		{
 			"tag" : "@REGEX",

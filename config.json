@@ -86,11 +86,16 @@
 			"type" : "form-list",
 			"repeatable" : true,
 			"branchingLogic" : { "field" : "survey-skip-validate-exempt-forms", "value" : true }
+		}
+	],
+	"action-tags" : [
+		{
+			"tag" : "@ALLOWFUTURE",
+			"description" : "If the option in the Validation Tweaker module project settings to prohibit entry of dates by default in the future (after current date) is enabled, use this action tag on a date or datetime field to override this validation."
 		},
 		{
-			"key" : "desc2",
-			"name" : "<script>$(function(){$('input[name=past-date]').attr('type','date')})</script>",
-			"type" : "descriptive"
+			"tag" : "@REGEX",
+			"description" : "Validate a field according to a regular expression. The format must follow the pattern @REGEX='????', in which the pattern is inside single or double quotes."
 		}
 	]
 }

@@ -35,27 +35,17 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 		if ( substr( PAGE_FULL, strlen( APP_PATH_WEBROOT ), 26 ) == 'Design/online_designer.php' ||
 		     substr( PAGE_FULL, strlen( APP_PATH_WEBROOT ), 22 ) == 'ProjectSetup/index.php' )
 		{
-			$listActionTags = [];
-			if ( $this->getSystemSetting( 'enable-regex' ) )
+			$listRemoveActionTags = [];
+			if ( ! $this->getSystemSetting( 'enable-regex' ) )
 			{
-				$listActionTags['@REGEX'] =
-					'Validate a field according to a regular expression. The format must follow ' .
-					'the pattern @REGEX=\'????\', in which the pattern is inside single or ' .
-					'double quotes.';
+				$listRemoveActionTags[] = '@REGEX';
 			}
-			if ( $this->getProjectSetting( 'no-future-dates' ) )
 			{
-				$listActionTags['@ALLOWFUTURE'] =
-					'For a date or datetime field, override the validation prohibiting dates in ' .
-					'the future (after current date).';
 			}
-			if ( $this->getProjectSetting( 'no-past-dates' ) )
+			if ( ! empty( $listRemoveActionTags ) )
 			{
-				$listActionTags['@ALLOWPAST'] =
-					'For a date or datetime field, override the validation prohibiting dates in ' .
-					'the past (before defined date in module settings).';
+				$this->provideActionTagRemove( $listRemoveActionTags );
 			}
-			$this->provideActionTagExplain( $listActionTags );
 		}
 	}
 
@@ -522,54 +512,17 @@ $(function()
 
 
 
-	// Output JavaScript to amend the action tags guide.
+	// Output JavaScript to remove action tags from the action tags guide.
 
-	function provideActionTagExplain( $listActionTags )
+	function provideActionTagRemove( $listActionTags )
 	{
-		if ( empty( $listActionTags ) )
-		{
-			return;
-		}
-		$listActionTagsJS = [];
-		foreach ( $listActionTags as $t => $d )
-		{
-			$listActionTagsJS[] = [ $t, $d ];
-		}
-		$listActionTagsJS = json_encode( $listActionTagsJS );
 
 ?>
 <script type="text/javascript">
 $(function()
 {
+  var vListTagsRemove = <?php echo json_encode( $listActionTags ), "\n"; ?>
   var vActionTagPopup = actionTagExplainPopup
-  var vMakeRow = function(vTag, vDesc, vTable)
-  {
-    var vRow = $( '<tr>' + vTable.find('tr:first').html() + '</tr>' )
-    var vOldTag = vRow.find('td:eq(1)').html()
-    var vButton = vRow.find('button')
-    vRow.find('td:eq(1)').html(vTag)
-    vRow.find('td:eq(2)').html(vDesc)
-    if ( vButton.length != 0 )
-    {
-      vButton.attr('onclick', vButton.attr('onclick').replace(vOldTag,vTag))
-    }
-    var vRows = vTable.find('tr')
-    var vInserted = false
-    for ( var i = 0; i < vRows.length; i++ )
-    {
-      var vA = vRows.eq(i).find('td:eq(1)').html()
-      if ( vTag < vRows.eq(i).find('td:eq(1)').html() )
-      {
-        vRows.eq(i).before(vRow)
-        vInserted = true
-        break
-      }
-    }
-    if ( ! vInserted )
-    {
-      vRows.last().after(vRow)
-    }
-  }
   actionTagExplainPopup = function(hideBtns)
   {
     vActionTagPopup(hideBtns)
@@ -581,10 +534,15 @@ $(function()
       }
       clearInterval( vCheckTagsPopup )
       var vActionTagTable = $('#action_tag_explain_popup table');
-      <?php echo $listActionTagsJS; ?>.forEach(function(vItem)
+      var vRows = vActionTagTable.find('tr')
+      for ( var i = 0; i < vRows.length; i++ )
       {
-        vMakeRow(vItem[0],vItem[1],vActionTagTable)
-      })
+        var vTag = vRows.eq(i).find('td:eq(1)').text()
+        if ( vListTagsRemove.includes( vTag ) )
+        {
+          vRows.eq(i).css('display','none')
+        }
+      }
     }, 200 )
   }
 })
@@ -592,6 +550,8 @@ $(function()
 <?php
 
 	}
+
+
 
 
 

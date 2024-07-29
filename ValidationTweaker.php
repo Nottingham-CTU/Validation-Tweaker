@@ -645,7 +645,9 @@ $(function()
 					$randomnumberRange = explode( ',', $randomnumberRange );
 					if ( $randomnumberRange[0] > $randomnumberRange[1] )
 					{
+						$randomnumberTemp = $randomnumberRange[1];
 						$randomnumberRange[1] = $randomnumberRange[0];
+						$randomnumberRange[0] = $randomnumberTemp;
 					}
 					$randomnumber = random_int( intval( $randomnumberRange[0] ),
 					                            intval( $randomnumberRange[1] ) );

@@ -175,7 +175,8 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 <script type="text/javascript">
 $(function()
 {
-  var vFields = JSON.parse('<?php echo json_encode($listDateFields); ?>')
+  var vFields = JSON.parse( $('<div></div>')
+                      .html('<?php echo $this->escape( json_encode($listDateFields) ); ?>').text() )
   var vNow = new Date()
   vNow = new Date( vNow.getTime() - ( vNow.getTimezoneOffset() * 60000 ) )
   vNow = vNow.toISOString().replace( 'T', ' ' )
@@ -397,13 +398,14 @@ $(function()
 		// Check if regular expression validation is enabled.
 		$allowedRegex = $this->getSystemSetting( 'enable-regex' );
 
-		// Get and check the regular expressions for each field. Any invalid regular expressions
-		// will be ignored.
+		// Get and check the regular expressions and validation logic for each field.
+		// Any invalid regular expressions will be ignored.
 		$listLogicFields = [];
 		$listFormFields = \REDCap::getDataDictionary( 'array', false, true, $instrument );
-
+		$listFieldNames = [];
 		foreach ( $listFormFields as $fieldName => $infoField )
 		{
+			$listFieldNames[] = $fieldName;
 			if ( in_array( $infoField[ 'field_type' ], [ 'text', 'notes' ] ) &&
 			     $infoField[ self::VTYPE ] == '' )
 			{
@@ -431,6 +433,51 @@ $(function()
 				{
 					if ( $fieldLogic != '' )
 					{
+						$listFL = preg_split( '/([\'"])/', $fieldLogic, -1,
+						                      PREG_SPLIT_DELIM_CAPTURE );
+						$flQuote = '';
+						$flField = '';
+						$fieldLogic = '';
+						foreach ( $listFL as $flPart )
+						{
+							if ( $flQuote == '' && ( $flPart == "'" || $flPart == '"' ) )
+							{
+								$flQuote = $strPart;
+							}
+							elseif ( $flQuote != '' && $flQuote == $flPart )
+							{
+								$flQuote = '';
+							}
+							elseif ( $flQuote == '' )
+							{
+								$listFL2 = preg_split( '/((?:\\[[A-Za-z0-9_-]+\\]){1,3})/',
+								                       $flPart, -1, PREG_SPLIT_DELIM_CAPTURE );
+								$flPart = '';
+								foreach ( $listFL2 as $flPart2 )
+								{
+									if ( preg_match( '/((?:\\[[A-Za-z0-9_-]+\\]){1,3})/',
+									     $flPart2 ) && ! in_array( substr( $flPart2, 1, -1 ),
+									                               $listFieldNames ) )
+									{
+										$flPart2 =
+											\REDCap::evaluateLogic( $flPart2, $this->getProjectId(),
+											                        $record, $eventID, $instance,
+											                        $instrument, $instrument, null,
+											                        true, false );
+										if ( strpos( $flPart2, "'" ) === false )
+										{
+											$flPart2 = "'" . $flPart2 . "'";
+										}
+										else
+										{
+											$flPart2 = '"' . $flPart2 . "'";
+										}
+									}
+									$flPart .= $flPart2;
+								}
+							}
+							$fieldLogic .= $flPart;
+						}
 						$fieldLogic = \LogicTester::formatLogicToJS( $fieldLogic, false, $eventID,
 						                                             false, $this->getProjectId() );
 					}
@@ -481,7 +528,8 @@ $(function()
       vElem.style.backgroundColor = '#FFB7BE'
     }
   }
-  var vFields = JSON.parse('<?php echo addslashes( json_encode($listLogicFields) ); ?>')
+  var vFields = JSON.parse( $('<div></div>')
+                     .html('<?php echo $this->escape( json_encode($listLogicFields) ); ?>').text() )
   Object.keys( vFields ).forEach( function( vFieldName )
   {
     var vFieldData = vFields[ vFieldName ]

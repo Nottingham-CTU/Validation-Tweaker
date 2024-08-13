@@ -660,8 +660,8 @@ $(function()
 						"@DEFAULT=" . $defaultVal . " " . $annotation;
 			}
 			elseif ( $hasRandomnumber &&
-			         preg_match( '/(^|\\s)@RANDOMNUMBER(\\((-?[0-9]+,-?[0-9]+)\\))?(\\s|$)/',
-			                     $annotation, $randomnumberMatches ) )
+			        preg_match( '/(^|\\s)@RANDOMNUMBER(\\(( *-?[0-9]+ *, *-?[0-9]+ *)\\))?(\\s|$)/',
+			                    $annotation, $randomnumberMatches ) )
 			{
 				$randomnumber = 0;
 				$randomnumberRange = $randomnumberMatches[3] ?? '';
@@ -691,14 +691,15 @@ $(function()
 				else
 				{
 					$randomnumberRange = explode( ',', $randomnumberRange );
+					$randomnumberRange[0] = intval( $randomnumberRange[0] );
+					$randomnumberRange[1] = intval( $randomnumberRange[1] );
 					if ( $randomnumberRange[0] > $randomnumberRange[1] )
 					{
 						$randomnumberTemp = $randomnumberRange[1];
 						$randomnumberRange[1] = $randomnumberRange[0];
 						$randomnumberRange[0] = $randomnumberTemp;
 					}
-					$randomnumber = random_int( intval( $randomnumberRange[0] ),
-					                            intval( $randomnumberRange[1] ) );
+					$randomnumber = random_int( $randomnumberRange[0], $randomnumberRange[1] );
 				}
 				$GLOBALS['Proj']->metadata[$fieldName]['misc'] =
 						"@DEFAULT='" . $randomnumber . "' " . $annotation;

@@ -2,12 +2,6 @@
 	"name" : "Validation Tweaker",
 	"namespace" : "Nottingham\\ValidationTweaker",
 	"description" : "Provides options to adjust the enforcement of field validation and adds additional validation features.",
-	"permissions" : [
-		"redcap_every_page_before_render",
-		"redcap_every_page_top",
-		"redcap_data_entry_form_top",
-		"redcap_survey_page_top"
-	],
 	"authors" : [
 		{
 			"name" : "Richard Dooley",
@@ -15,14 +9,26 @@
 			"institution" : "University of Nottingham"
 		}
 	],
-	"framework-version" : 3,
+	"framework-version" : 12,
 	"compatibility" : {
-		"redcap-version-min" : "9.6.5"
+		"redcap-version-min" : "13.1.5",
+		"php-version-min" : "8.0.0",
+		"php-version-max" : "8.99.99"
 	},
 	"system-settings" : [
 		{
+			"key" : "enable-default-calc",
+			"name" : "Enable calculated default value (@DEFAULT-CALC) action tag",
+			"type" : "checkbox"
+		},
+		{
 			"key" : "enable-regex",
-			"name" : "Enable regular expression action tag",
+			"name" : "Enable regular expression (@REGEX) action tag",
+			"type" : "checkbox"
+		},
+		{
+			"key" : "enable-randomnumber",
+			"name" : "Enable random number (@RANDOMNUMBER) action tag",
 			"type" : "checkbox"
 		}
 	],
@@ -70,31 +76,8 @@
 		},
 		{
 			"key" : "no-future-dates",
-			"name" : "Don't allow entry of dates in the future<br>(after current date)",
+			"name" : "Don't allow entry of dates in the future by default",
 			"type" : "checkbox"
-		},
-		{
-			"key" : "no-past-dates",
-			"name" : "* Don't allow entry of dates in the past<br>(before defined date)",
-			"type" : "checkbox"
-		},
-		{
-			"key" : "past-date-event",
-			"name" : "* Event for determining 'past' dates",
-			"type" : "event-list",
-			"branchingLogic" : { "field" : "no-past-dates", "value" : true }
-		},
-		{
-			"key" : "past-date-field",
-			"name" : "* Field for determining 'past' dates",
-			"type" : "field-list",
-			"branchingLogic" : { "field" : "no-past-dates", "value" : true }
-		},
-		{
-			"key" : "past-date",
-			"name" : "* Consider dates prior to this date to be in the past",
-			"type" : "text",
-			"branchingLogic" : { "field" : "no-past-dates", "value" : true }
 		},
 		{
 			"key" : "survey-skip-validate",
@@ -113,11 +96,32 @@
 			"type" : "form-list",
 			"repeatable" : true,
 			"branchingLogic" : { "field" : "survey-skip-validate-exempt-forms", "value" : true }
+		}
+	],
+	"action-tags" : [
+		{
+			"tag" : "@ALLOWFUTURE",
+			"description" : "If the option in the Validation Tweaker module project settings to prohibit entry of dates by default in the future (after current date) is enabled, use this action tag on a date or datetime field to override this validation."
 		},
 		{
-			"key" : "desc2",
-			"name" : "<script>$(function(){$('input[name=past-date]').attr('type','date')})</script>",
-			"type" : "descriptive"
+			"tag" : "@DEFAULT-CALC",
+			"description" : "Evaluates logic that is provided inside a @DEFAULT-CALC() function and sets the field's initial value to the result of the calculation. This allows a field to have a specified default value when viewing the field on a survey or data entry form that has not yet had any data saved for it (i.e., when the form status icon is gray or when a survey page has not had any data entered yet). NOTE: The default value does *not* get applied during any data imports (via API or Data Import Tool) but only operates when viewing survey pages and data entry forms."
+		},
+		{
+			"tag" : "@RANDOMNUMBER",
+			"description" : "Loads a cryptographically secure random number into a blank text field. If the field has validation, the value will adjust to match the number format. The number returned will be a decimal value between 0 and 1, unless the action tag is used in the format @RANDOMNUMBER(x,y) where x and y are two numbers, in which case the number returned will be an integer between x and y (inclusive). NOTE: The random number does not get applied during any data imports (via API or Data Import Tool) but only operates when viewing survey pages and data entry forms."
+		},
+		{
+			"tag" : "@REGEX",
+			"description" : "Validate a field according to a regular expression. The format must follow the pattern @REGEX='????', in which the pattern is inside single or double quotes."
+		},
+		{
+			"tag" : "@VALIDATE-LOGIC",
+			"description" : "Validate a field according to conditional logic. Evaluates logic that is provided inside a @VALIDATE-LOGIC() function and uses the result to determine whether the field is valid."
+		},
+		{
+			"tag" : "@VALIDATE-MESSAGE",
+			"description" : "Provide the message to be displayed if regular expression (@REGEX) or logic (@VALIDATE-LOGIC) validation fails."
 		}
 	]
 }

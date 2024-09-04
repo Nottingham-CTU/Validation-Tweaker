@@ -9,42 +9,54 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 
 
 
-	// Amend the settings for REDCap v12.1.0 and greater.
-
-	public function redcap_module_configuration_settings( $project_id, $settings )
-	{
-		if ( $project_id !== null && \REDCap::versionCompare( REDCAP_VERSION, '12.1.0' ) >= 0 &&
-		     ! $this->getProjectSetting( 'no-past-dates', $project_id ) &&
-		     ! $this->framework->getUser()->isSuperUser() )
-		{
-			foreach ( $settings as $k => $v )
-			{
-				if ( $v['key'] == 'no-past-dates' )
-				{
-					$settings[$k]['branchingLogic'] =
-						[ 'field' => 'no-past-dates', 'value' => true ];
-					break;
-				}
-			}
-		}
-		return $settings;
-	}
-
-
-
 	// If the skip validation of required fields option is enabled for surveys, temporarily deem all
 	// required fields to be not required when a survey is submitted using this option.
 
 	public function redcap_every_page_before_render()
 	{
-		if ( $this->getProjectSetting( 'survey-skip-validate' ) &&
-		     $_SERVER['REQUEST_METHOD'] == 'POST' && isset( $_GET['__skipvalidate'] ) &&
-		     substr( PAGE_FULL, 0, strlen( APP_PATH_SURVEY ) ) == APP_PATH_SURVEY )
+		// Determine whether this is a data entry page or survey page.
+		$isDataEntryPage = ( substr( PAGE_FULL, strlen( APP_PATH_WEBROOT ), 10 ) == 'DataEntry/' );
+		$isSurveyPage = ( substr( PAGE_FULL, 0, strlen( APP_PATH_SURVEY ) ) == APP_PATH_SURVEY );
+
+		// If this isn't a survey page and a user is not logged in, exit here.
+		if ( ! $isSurveyPage && ! defined('USERID') )
+		{
+			return;
+		}
+
+		// If a survey page, and the skip validation option is enabled and has been used,
+		// temporarily deem all required fields to be not required.
+		if ( $isSurveyPage && $this->getProjectSetting( 'survey-skip-validate' ) &&
+		     $_SERVER['REQUEST_METHOD'] == 'POST' && isset( $_GET['__skipvalidate'] ) )
 		{
 			foreach ($GLOBALS['Proj']->metadata as $fieldName => $fieldData)
 			{
 				$GLOBALS['Proj']->metadata[$fieldName]['field_req'] = 0;
 			}
+		}
+
+		// Convert @DEFAULT-CALC and @RANDOMNUMBER action tags to default values on data entry forms
+		// and survey pages. This is done here as it may be too late when other hooks are called.
+		if ( $isDataEntryPage || $isSurveyPage )
+		{
+			if ( $isDataEntryPage )
+			{
+				$record = intval( $_GET['id'] );
+				$eventID = intval( $_GET['event_id'] );
+				$instance = intval( $_GET['instance'] ?? 1 );
+				$instrument = $_GET['page'];
+			}
+			else
+			{
+				$record = $this->query( 'SELECT r.record FROM redcap_surveys_participants p ' .
+				                        'JOIN redcap_surveys_response r ON p.participant_id = ' .
+				                        'r.participant_id WHERE hash = ?', [ $_GET['s'] ] )
+				                        ->fetch_assoc()['record'];
+				$eventID = $GLOBALS['survey_context']['event_id'];
+				$instance = intval( $_GET['instance'] ?? 1 );
+				$instrument = $GLOBALS['survey_context']['form_name'];
+			}
+			$this->performDefaultValues( $instrument, $record, $eventID, $instance );
 		}
 	}
 
@@ -58,27 +70,23 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 		if ( substr( PAGE_FULL, strlen( APP_PATH_WEBROOT ), 26 ) == 'Design/online_designer.php' ||
 		     substr( PAGE_FULL, strlen( APP_PATH_WEBROOT ), 22 ) == 'ProjectSetup/index.php' )
 		{
-			$listActionTags = [];
-			if ( $this->getSystemSetting( 'enable-regex' ) )
+			$listRemoveActionTags = [];
+			if ( ! $this->getSystemSetting( 'enable-default-calc' ) )
 			{
-				$listActionTags['@REGEX'] =
-					'Validate a field according to a regular expression. The format must follow ' .
-					'the pattern @REGEX=\'????\', in which the pattern is inside single or ' .
-					'double quotes.';
+				$listRemoveActionTags[] = '@DEFAULT-CALC';
 			}
-			if ( $this->getProjectSetting( 'no-future-dates' ) )
+			if ( ! $this->getSystemSetting( 'enable-regex' ) )
 			{
-				$listActionTags['@ALLOWFUTURE'] =
-					'For a date or datetime field, override the validation prohibiting dates in ' .
-					'the future (after current date).';
+				$listRemoveActionTags[] = '@REGEX';
 			}
-			if ( $this->getProjectSetting( 'no-past-dates' ) )
+			if ( ! $this->getSystemSetting( 'enable-randomnumber' ) )
 			{
-				$listActionTags['@ALLOWPAST'] =
-					'For a date or datetime field, override the validation prohibiting dates in ' .
-					'the past (before defined date in module settings).';
+				$listRemoveActionTags[] = '@RANDOMNUMBER';
 			}
-			$this->provideActionTagExplain( $listActionTags );
+			if ( ! empty( $listRemoveActionTags ) )
+			{
+				$this->provideActionTagRemove( $listRemoveActionTags );
+			}
 		}
 	}
 
@@ -89,8 +97,8 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 	public function redcap_data_entry_form_top( $project_id, $record=null, $instrument, $event_id,
 	                                            $group_id=null, $repeat_instance=1 )
 	{
-		$this->outputDateValidation( $instrument, $record, $event_id );
-		$this->outputRegexValidation( $instrument );
+		$this->outputDateValidation( $instrument, $record, $event_id, $repeat_instance );
+		$this->outputLogicRegexValidation( $instrument, $record, $event_id, $repeat_instance );
 		$this->outputEnforceValidation( $instrument );
 	}
 
@@ -102,89 +110,43 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 	                                        $group_id=null, $survey_hash=null, $response_id=null,
 	                                        $repeat_instance=1 )
 	{
-		$this->outputDateValidation( $instrument, $record, $event_id );
-		$this->outputRegexValidation( $instrument );
+		$this->outputDateValidation( $instrument, $record, $event_id, $repeat_instance );
+		$this->outputLogicRegexValidation( $instrument, $record, $event_id, $repeat_instance );
 		$this->outputSurveyValidationSkip( $instrument );
 	}
 
 
 
-	// Amend date field validation to block past/future dates as required.
+	// Amend date field validation to block future dates as required.
 
-	protected function outputDateValidation( $instrument, $record, $eventID )
+	protected function outputDateValidation( $instrument, $record, $eventID, $instance )
 	{
 		$blockFutureDates = $this->getProjectSetting( 'no-future-dates' );
-		$blockPastDates = $this->getProjectSetting( 'no-past-dates' );
 
 		// Stop here if date validation disabled.
-		if ( ! $blockFutureDates && ! $blockPastDates )
+		if ( ! $blockFutureDates )
 		{
 			return;
 		}
 
 		$listDateFields = [];
 		$listFormFields = \REDCap::getDataDictionary( 'array', false, true, $instrument );
-		$projectEarliestDate = '';
-		$recordEarliestDate = '';
-
-		// If blocking 'past' dates, determine the earliest date allowed.
-		if ( $blockPastDates )
-		{
-			// Get the earliest date for the project, if defined in the module project settings.
-			if ( $this->getProjectSetting( 'past-date' ) != '' )
-			{
-				$projectEarliestDate = $this->getProjectSetting( 'past-date' );
-				if ( strlen( $projectEarliestDate ) == 10 )
-				{
-					$projectEarliestDate .= ' 00:00:00';
-				}
-				elseif ( strlen( $projectEarliestDate ) == 16 )
-				{
-					$projectEarliestDate .= ':00';
-				}
-			}
-
-			// Determine the earliest date for the record, based on the defined event/field.
-			$earliestDateEvent = $this->getProjectSetting( 'past-date-event' );
-			$earliestDateField = $this->getProjectSetting( 'past-date-field' );
-			if ( $earliestDateEvent != '' && $earliestDateField != '' )
-			{
-				$recordEarliestDate =
-					\REDCap::getData( 'array', $record, $earliestDateField, $earliestDateEvent )
-						[ $record ][ $earliestDateEvent ][ $earliestDateField ] ?? '';
-				$recordEarliestDate = array_reduce( [ $recordEarliestDate ],
-				                                    function( $c, $i ) { return $c . $i; }, '' );
-				if ( $recordEarliestDate != '' &&
-				     preg_match( '/^[0-9]{4}-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])/',
-				                 $recordEarliestDate ) )
-				{
-					if ( strlen( $recordEarliestDate ) == 10 )
-					{
-						$recordEarliestDate .= ' 00:00:00';
-					}
-					elseif ( strlen( $recordEarliestDate ) == 16 )
-					{
-						$recordEarliestDate .= ':00';
-					}
-				}
-				else
-				{
-					$recordEarliestDate = '';
-				}
-			}
-		}
 
 		// Apply the validation to each date field on the form as required.
 		foreach ( $listFormFields as $fieldName => $infoField )
 		{
-			$noFutureDate = ( $blockFutureDates &&
-			                !preg_match( '/@ALLOWFUTURE(\s|$)/', $infoField['field_annotation'] ) );
-			$noPastDate = ( $blockPastDates &&
-			                !preg_match( '/@ALLOWPAST(\s|$)/', $infoField['field_annotation'] ) );
-			if ( $infoField[ 'field_type' ] == 'text' &&
-			     ( substr( $infoField[ self::VTYPE ], 0, 5 ) == 'date_' ||
-			       substr( $infoField[ self::VTYPE ], 0, 9 ) == 'datetime_' ) &&
-			     ( $noFutureDate || $noPastDate ) )
+			// Skip non date/datetime fields.
+			if ( $infoField[ 'field_type' ] != 'text' ||
+			     ( substr( $infoField[ self::VTYPE ], 0, 5 ) != 'date_' &&
+			       substr( $infoField[ self::VTYPE ], 0, 9 ) != 'datetime_' ) )
+			{
+				continue;
+			}
+			$annotation = \Form::replaceIfActionTag( $infoField[ 'field_annotation' ],
+			                                         $this->getProjectId(), $record,
+			                                         $eventID, $instrument, $instance );
+			$noFutureDate = !preg_match( '/@ALLOWFUTURE(\s|$)/', $annotation );
+			if ( $noFutureDate )
 			{
 				if ( substr( $infoField[ self::VTYPE ], 0, 17 ) == 'datetime_seconds_' )
 				{
@@ -199,39 +161,13 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 					$fieldLength = 10;
 				}
 
-				$notBefore = '';
-
-				if ( $noPastDate && ! in_array( $infoField[ self::VMIN ], [ 'now', 'today' ] ) &&
-				     substr( trim( $infoField[ self::VMIN ] ), 0, 1 ) != '[' )
-				{
-					$notBefore = $projectEarliestDate;
-					if ( ( $notBefore == '' || $notBefore < $recordEarliestDate ) &&
-					     ( $earliestDateEvent != $eventID || $earliestDateField != $fieldName ) )
-					{
-						$notBefore = $recordEarliestDate;
-					}
-				}
-
 				$listDateFields[ $fieldName ] = [ 'type' => $infoField[ self::VTYPE ],
-				                                  'len' => $fieldLength,
-				                                  'nofuture' => $noFutureDate,
-				                                  'notbefore' => $notBefore ];
+				                                  'len' => $fieldLength ];
 			}
 		}
 
 		if ( count( $listDateFields ) > 0 )
 		{
-			if ( \REDCap::versionCompare( REDCAP_VERSION, '12.1.0' ) >= 0 )
-			{
-				$newRC = 'true';
-				$nowJS = "new Date( vNow.getTime() - ( vNow.getTimezoneOffset() * 60000 ) )\n";
-			}
-			else
-			{
-				$newRC = 'false';
-				$nowJS =
-					"new Date( vNow.getTime() + 900000 - ( vNow.getTimezoneOffset() * 60000 ) )\n";
-			}
 
 
 			// Output JavaScript to apply the date validation.
@@ -239,9 +175,10 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 <script type="text/javascript">
 $(function()
 {
-  var vFields = JSON.parse('<?php echo json_encode($listDateFields); ?>')
+  var vFields = JSON.parse( $('<div></div>')
+                      .html('<?php echo $this->escape( json_encode($listDateFields) ); ?>').text() )
   var vNow = new Date()
-  vNow = <?php echo $nowJS; ?>
+  vNow = new Date( vNow.getTime() - ( vNow.getTimezoneOffset() * 60000 ) )
   vNow = vNow.toISOString().replace( 'T', ' ' )
   Object.keys( vFields ).forEach( function( vFieldName )
   {
@@ -253,56 +190,30 @@ $(function()
     vFieldObj = vFieldObj[0]
     var vFieldData = vFields[ vFieldName ]
     var vOldBlur = vFieldObj.onblur
-    var vNotBefore = ''
-    var vNotAfter = ''
-    if ( vFieldData.notbefore != '' )
-    {
-      vNotBefore = vFieldData.notbefore.slice( 0, vFieldData.len )
-    }
-    if ( vFieldData.nofuture )
-    {
-      vNotAfter = vNow.slice( 0, vFieldData.len )
-    }
     if ( vOldBlur === null )
     {
-      vNotAfter = ( <?php echo $newRC; ?> && vFieldData.nofuture ? 'now' : vNotAfter )
       vFieldObj.onblur = function()
       {
-        redcap_validate( this, vNotBefore, vNotAfter, 'hard', vFieldData.type, 1 )
+        redcap_validate( this, '', 'now', 'hard', vFieldData.type, 1 )
       }
     }
     else
     {
+      var vNotAfter = vNow.slice( 0, vFieldData.len )
       var vFuncStrParts = vOldBlur.toString().match(/redcap_validate\((.*?,)(.*?),(.*?)(,.*)\)/)
       var vFuncStrStart = vFuncStrParts[1]
       var vEarliest = vFuncStrParts[2]
-      var vEarliestVal = vEarliest.match(/^(.*: *)?'(.*)'\)?$/)[2]
       var vLatest = vFuncStrParts[3]
       var vLatestVal = vLatest.match(/^(.*: *)?'(.*)'\)?$/)[2]
       var vFuncStrEnd = vFuncStrParts[4]
-      if ( vNotBefore != '' && vEarliestVal.localeCompare( vNotBefore ) < 0 )
+      if ( vLatestVal == '' )
       {
-        vEarliest = "'" + vNotBefore + "'"
+        vLatest = ( vFieldData.len == 10 ? "'today'" : "'now'" )
       }
-      if ( vLatestVal == '' || ( vNotAfter != '' && vLatestVal != 'today' && vLatestVal != 'now' ) )
+      else if ( vNotAfter != '' && vLatestVal != 'today' && vLatestVal != 'now' )
       {
-        if ( <?php echo $newRC; ?> && vFieldData.nofuture )
-        {
-          if ( vLatestVal == '' )
-          {
-            vLatest = ( vFieldData.len == 10 ? "'today'" : "'now'" )
-          }
-          else
-          {
-            vLatest = "(" + vLatest + ".localeCompare('" + vNotAfter + "')>0?" +
-                      ( vFieldData.len == 10 ? 'today' : 'now' ) + ":" + vLatest + ")"
-          }
-        }
-        else if ( ( vLatestVal == '' && vNotAfter != '' ) ||
-                  vLatestVal.localeCompare( vNotAfter ) > 0 )
-        {
-          vLatest = "'" + vNotAfter + "'"
-        }
+        vLatest = "(" + vLatest + ".localeCompare('" + vNotAfter + "')>0?" +
+                  ( vFieldData.len == 10 ? 'today' : 'now' ) + ":" + vLatest + ")"
       }
       vFieldObj.onblur = new Function( 'redcap_validate(' + vFuncStrStart + vEarliest +
                                        "," + vLatest + vFuncStrEnd + ')' )
@@ -480,42 +391,106 @@ $(function()
 
 
 
-	// Output JavaScript to perform regular expression validation on fields.
+	// Output JavaScript to perform logic and regular expression validation on fields.
 
-	protected function outputRegexValidation( $instrument )
+	protected function outputLogicRegexValidation( $instrument, $record, $eventID, $instance )
 	{
-		// Stop here if regular expression validation is disabled.
-		if ( ! $this->getSystemSetting( 'enable-regex' ) )
-		{
-			return;
-		}
+		// Check if regular expression validation is enabled.
+		$allowedRegex = $this->getSystemSetting( 'enable-regex' );
 
-		// Get and check the regular expressions for each field. Any invalid regular expressions
-		// will be ignored.
-		$listRegexFields = [];
+		// Get and check the regular expressions and validation logic for each field.
+		// Any invalid regular expressions will be ignored.
+		$listLogicFields = [];
 		$listFormFields = \REDCap::getDataDictionary( 'array', false, true, $instrument );
-
+		$listFieldNames = [];
 		foreach ( $listFormFields as $fieldName => $infoField )
 		{
+			$listFieldNames[] = $fieldName;
 			if ( in_array( $infoField[ 'field_type' ], [ 'text', 'notes' ] ) &&
 			     $infoField[ self::VTYPE ] == '' )
 			{
-				$hasRegex = preg_match( "/(^|\\s)@REGEX=((\'[^\'\r\n]*\')|(\"[^\"\r\n]*\"))(\\s|$)/",
-				                        $infoField['field_annotation'], $regexMatches );
-				if ( $hasRegex )
+				$annotation = \Form::replaceIfActionTag( $infoField[ 'field_annotation' ],
+				                                         $this->getProjectId(), $record,
+				                                         $eventID, $instrument, $instance );
+				$hasRegex = false;
+				$fieldRegex = '';
+				if ( $allowedRegex )
 				{
+					$hasRegex = preg_match( "/(^|\\s)@REGEX=((\'[^\'\r\n]*\')|" .
+					                        "(\"[^\"\r\n]*\"))(\\s|$)/",
+					                        $annotation, $regexMatches );
 					$fieldRegex = substr( $regexMatches[ 2 ], 1, -1 );
 					$validRegex = ( preg_match( $regexMatches[ 2 ], '' ) !== false );
-					if ( $validRegex && $fieldRegex != '' )
+					if ( ! $validRegex )
 					{
-						$listRegexFields[ $fieldName ] = [ 'regex' =>$fieldRegex,
-						                                   'type' => $infoField[ 'field_type' ] ];
+						$hasRegex = false;
+						$fieldRegex = '';
 					}
+				}
+				$fieldLogic =
+						\Form::getValueInParenthesesActionTag( $annotation, '@VALIDATE-LOGIC' );
+				if ( $hasRegex || $fieldLogic != '' )
+				{
+					if ( $fieldLogic != '' )
+					{
+						$listFL = preg_split( '/([\'"])/', $fieldLogic, -1,
+						                      PREG_SPLIT_DELIM_CAPTURE );
+						$flQuote = '';
+						$flField = '';
+						$fieldLogic = '';
+						foreach ( $listFL as $flPart )
+						{
+							if ( $flQuote == '' && ( $flPart == "'" || $flPart == '"' ) )
+							{
+								$flQuote = $strPart;
+							}
+							elseif ( $flQuote != '' && $flQuote == $flPart )
+							{
+								$flQuote = '';
+							}
+							elseif ( $flQuote == '' )
+							{
+								$listFL2 = preg_split( '/((?:\\[[A-Za-z0-9_-]+\\]){1,3})/',
+								                       $flPart, -1, PREG_SPLIT_DELIM_CAPTURE );
+								$flPart = '';
+								foreach ( $listFL2 as $flPart2 )
+								{
+									if ( preg_match( '/((?:\\[[A-Za-z0-9_-]+\\]){1,3})/',
+									     $flPart2 ) && ! in_array( substr( $flPart2, 1, -1 ),
+									                               $listFieldNames ) )
+									{
+										$flPart2 =
+											\REDCap::evaluateLogic( $flPart2, $this->getProjectId(),
+											                        $record, $eventID, $instance,
+											                        $instrument, $instrument, null,
+											                        true, false );
+										if ( strpos( $flPart2, "'" ) === false )
+										{
+											$flPart2 = "'" . $flPart2 . "'";
+										}
+										else
+										{
+											$flPart2 = '"' . $flPart2 . "'";
+										}
+									}
+									$flPart .= $flPart2;
+								}
+							}
+							$fieldLogic .= $flPart;
+						}
+						$fieldLogic = \LogicTester::formatLogicToJS( $fieldLogic, false, $eventID,
+						                                             false, $this->getProjectId() );
+					}
+					$message = \Form::getValueInQuotesActionTag( $annotation, '@VALIDATE-MESSAGE' );
+					$listLogicFields[ $fieldName ] = [ 'regex' => $fieldRegex,
+					                                   'logic' => $fieldLogic,
+					                                   'type' => $infoField[ 'field_type' ],
+					                                   'message' => $message ];
 				}
 			}
 		}
 
-		if ( count( $listRegexFields ) > 0 )
+		if ( count( $listLogicFields ) > 0 )
 		{
 
 
@@ -524,10 +499,11 @@ $(function()
 <script type="text/javascript">
 $(function()
 {
-  var vFuncRegexValidate = function ( vElem, vPattern )
+  var vFuncValidate = function ( vElem, vPattern, vLogic, vMessage )
   {
     var vRegex = new RegExp( vPattern )
-    if ( vElem.value == '' || vRegex.test( vElem.value ) )
+    var vLogicResult = vLogic == '' ? true : (new Function('return ' + vLogic))()
+    if ( vElem.value == '' || ( vLogicResult && ( vPattern == '' || vRegex.test( vElem.value ) ) ) )
     {
       vElem.style.fontWeight = 'normal'
       vElem.style.backgroundColor = '#FFFFFF'
@@ -537,6 +513,10 @@ $(function()
       var vPopupID = 'redcapValidationErrorPopup'
       var vPopupMsg = 'The value you provided could not be validated because it does not follow ' +
                       'the expected format. Please try again.'
+      if ( vMessage != '' )
+      {
+        vPopupMsg = vMessage
+      }
       $('#' + vPopupID).remove()
       initDialog( vPopupID )
       $('#' + vPopupID).html(vPopupMsg)
@@ -548,7 +528,8 @@ $(function()
       vElem.style.backgroundColor = '#FFB7BE'
     }
   }
-  var vFields = JSON.parse('<?php echo addslashes( json_encode($listRegexFields) ); ?>')
+  var vFields = JSON.parse( $('<div></div>')
+                     .html('<?php echo $this->escape( json_encode($listLogicFields) ); ?>').text() )
   Object.keys( vFields ).forEach( function( vFieldName )
   {
     var vFieldData = vFields[ vFieldName ]
@@ -565,7 +546,10 @@ $(function()
       return
     }
     vFieldObj = vFieldObj[0]
-    vFieldObj.onblur = function() { vFuncRegexValidate( this, vFieldData.regex ) }
+    vFieldObj.onblur = function()
+    {
+      vFuncValidate( this, vFieldData.regex, vFieldData.logic, vFieldData.message )
+    }
   })
 })
 </script>
@@ -645,54 +629,99 @@ $(function()
 
 
 
-	// Output JavaScript to amend the action tags guide.
+	// Set the default values as required from the @DEFAULT-CALC and @RANDOMNUMBER action tags.
 
-	function provideActionTagExplain( $listActionTags )
+	function performDefaultValues( $instrument, $record, $eventID, $instance )
 	{
-		if ( empty( $listActionTags ) )
+		$hasDefaultCalc = $this->getSystemSetting( 'enable-default-calc' );
+		$hasRandomnumber = $this->getSystemSetting( 'enable-randomnumber' );
+		if ( ! $hasDefaultCalc && ! $hasRandomnumber )
 		{
 			return;
 		}
-		$listActionTagsJS = [];
-		foreach ( $listActionTags as $t => $d )
+		$listFieldNames = \REDCap::getFieldNames( $instrument );
+		foreach ( $listFieldNames as $fieldName )
 		{
-			$listActionTagsJS[] = [ $t, $d ];
+			$annotation = $GLOBALS['Proj']->metadata[$fieldName]['misc'];
+			$annotation = \Form::replaceIfActionTag( $annotation, $this->getProjectId(), $record,
+			                                         $eventID, $instrument, $instance );
+			$defaultCalc = $hasDefaultCalc
+			               ? \Form::getValueInParenthesesActionTag( $annotation, '@DEFAULT-CALC' )
+			               : '';
+			if ( $defaultCalc != '' )
+			{
+				$defaultVal = \REDCap::evaluateLogic( $defaultCalc, $this->getProjectId(),
+				                                      $record, $eventID, $instance,
+				                                      $instrument, $instrument, null, true );
+				$defaultVal = ( strpos( $defaultVal, "'" ) === false )
+				              ? ( "'" . $defaultVal . "'" )
+				              : ( '"' . str_replace( '"', '', $defaultVal ) . '"' );
+				$GLOBALS['Proj']->metadata[$fieldName]['misc'] =
+						"@DEFAULT=" . $defaultVal . " " . $annotation;
+			}
+			elseif ( $hasRandomnumber &&
+			        preg_match( '/(^|\\s)@RANDOMNUMBER(\\(( *-?[0-9]+ *, *-?[0-9]+ *)\\))?(\\s|$)/',
+			                    $annotation, $randomnumberMatches ) )
+			{
+				$randomnumber = 0;
+				$randomnumberRange = $randomnumberMatches[3] ?? '';
+				if ( $randomnumberRange == '' )
+				{
+					$randomnumber = random_int( 0, ( PHP_INT_MAX - 1 ) ) / PHP_INT_MAX;
+					$decimalPlaces = -1;
+					$validationType =
+							$GLOBALS['Proj']->metadata[$fieldName]['element_validation_type'];
+					if ( $validationType == 'integer' || $validationType == 'int' )
+					{
+						$decimalPlaces = 0;
+					}
+					elseif ( strpos( $validationType, 'number_' ) === 0 )
+					{
+						$decimalPlaces = intval( substr( $validationType, 7, 1 ) );
+					}
+					if ( $decimalPlaces > -1 )
+					{
+						$randomnumber = round( $randomnumber, $decimalPlaces );
+					}
+					if ( strpos( $validationType, '_comma_decimal' ) !== false )
+					{
+						$randomnumber = str_replace( '.', ',', $randomnumber );
+					}
+				}
+				else
+				{
+					$randomnumberRange = explode( ',', $randomnumberRange );
+					$randomnumberRange[0] = intval( $randomnumberRange[0] );
+					$randomnumberRange[1] = intval( $randomnumberRange[1] );
+					if ( $randomnumberRange[0] > $randomnumberRange[1] )
+					{
+						$randomnumberTemp = $randomnumberRange[1];
+						$randomnumberRange[1] = $randomnumberRange[0];
+						$randomnumberRange[0] = $randomnumberTemp;
+					}
+					$randomnumber = random_int( $randomnumberRange[0], $randomnumberRange[1] );
+				}
+				$GLOBALS['Proj']->metadata[$fieldName]['misc'] =
+						"@DEFAULT='" . $randomnumber . "' " . $annotation;
+			}
 		}
-		$listActionTagsJS = json_encode( $listActionTagsJS );
+	}
+
+
+
+
+
+	// Output JavaScript to remove action tags from the action tags guide.
+
+	function provideActionTagRemove( $listActionTags )
+	{
 
 ?>
 <script type="text/javascript">
 $(function()
 {
+  var vListTagsRemove = <?php echo json_encode( $listActionTags ), "\n"; ?>
   var vActionTagPopup = actionTagExplainPopup
-  var vMakeRow = function(vTag, vDesc, vTable)
-  {
-    var vRow = $( '<tr>' + vTable.find('tr:first').html() + '</tr>' )
-    var vOldTag = vRow.find('td:eq(1)').html()
-    var vButton = vRow.find('button')
-    vRow.find('td:eq(1)').html(vTag)
-    vRow.find('td:eq(2)').html(vDesc)
-    if ( vButton.length != 0 )
-    {
-      vButton.attr('onclick', vButton.attr('onclick').replace(vOldTag,vTag))
-    }
-    var vRows = vTable.find('tr')
-    var vInserted = false
-    for ( var i = 0; i < vRows.length; i++ )
-    {
-      var vA = vRows.eq(i).find('td:eq(1)').html()
-      if ( vTag < vRows.eq(i).find('td:eq(1)').html() )
-      {
-        vRows.eq(i).before(vRow)
-        vInserted = true
-        break
-      }
-    }
-    if ( ! vInserted )
-    {
-      vRows.last().after(vRow)
-    }
-  }
   actionTagExplainPopup = function(hideBtns)
   {
     vActionTagPopup(hideBtns)
@@ -704,10 +733,21 @@ $(function()
       }
       clearInterval( vCheckTagsPopup )
       var vActionTagTable = $('#action_tag_explain_popup table');
-      <?php echo $listActionTagsJS; ?>.forEach(function(vItem)
+      var vRows = vActionTagTable.find('tr')
+      for ( var i = 0; i < vRows.length; i++ )
       {
-        vMakeRow(vItem[0],vItem[1],vActionTagTable)
-      })
+        var vTag = vRows.eq(i).find('td:eq(1)').text()
+        if ( vListTagsRemove.includes( vTag ) )
+        {
+          vRows.eq(i).css('display','none')
+        }
+        if ( vTag == '@VALIDATE-MESSAGE' && vListTagsRemove.includes( '@REGEX' ) )
+        {
+          var vDescription = vRows.eq(i).find('td:eq(2)').html()
+          vDescription = vDescription.replace('regular expression (@REGEX) or ','')
+          vRows.eq(i).find('td:eq(2)').html( vDescription )
+        }
+      }
     }, 200 )
   }
 })
@@ -715,6 +755,8 @@ $(function()
 <?php
 
 	}
+
+
 
 
 
@@ -749,27 +791,6 @@ $(function()
 					$errMsg .= "\n- Exemption mode (from validation enforcement) " . ($i+1) .
 					           " is missing.";
 				}
-			}
-		}
-
-		if ( $settings['no-past-dates'] )
-		{
-			if ( ( $settings['past-date-event'] == '' && $settings['past-date-field'] != '' ) ||
-			     ( $settings['past-date-event'] != '' && $settings['past-date-field'] == '' ) )
-			{
-				$errMsg .= "\n- To determine past dates by field, both event and field must be " .
-				           "specified.";
-			}
-			if ( $settings['past-date-event'] == '' && $settings['past-date'] == '' )
-			{
-				$errMsg .= "\n- To disallow entry of dates in the past, either an event/field " .
-				           "or a fixed date must be specified to determine past dates.";
-			}
-			if ( $settings['past-date'] != '' &&
-			     ! preg_match( '/^[0-9]{4}-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])$/',
-			                   $settings['past-date'] ) )
-			{
-				$errMsg .= "\n- Invalid date entered for determining past dates.";
 			}
 		}
 

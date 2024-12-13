@@ -529,7 +529,8 @@ $(function()
     }
   }
   var vFields = JSON.parse( $('<div></div>')
-                     .html('<?php echo $this->escape( json_encode($listLogicFields) ); ?>').text() )
+                .html('<?php echo addslashes( $this->escape( json_encode($listLogicFields) ) ); ?>')
+                .text() )
   Object.keys( vFields ).forEach( function( vFieldName )
   {
     var vFieldData = vFields[ vFieldName ]

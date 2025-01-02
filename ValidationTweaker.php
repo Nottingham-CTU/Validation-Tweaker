@@ -375,7 +375,9 @@ $(function()
   var vFnOldDataEntrySubmit = dataEntrySubmit
   dataEntrySubmit = function ( ob )
   {
-    if ( ! vFnEnforceValidation() )
+    if ( ( ( typeof ob == 'string' && ob != 'submit-btn-deleteform' ) ||
+           ( typeof ob == 'object' && ob.name != 'submit-btn-deleteform' ) ) &&
+         ! vFnEnforceValidation() )
     {
       simpleDialog( <?php echo $enforceText; ?> )
       return false

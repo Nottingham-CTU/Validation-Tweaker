@@ -37,6 +37,7 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 
 		// Convert @DEFAULT-CALC and @RANDOMNUMBER action tags to default values on data entry forms
 		// and survey pages. This is done here as it may be too late when other hooks are called.
+		// For surveys, also enforce values validation here.
 		if ( $isDataEntryPage || $isSurveyPage )
 		{
 			if ( $isDataEntryPage )
@@ -55,6 +56,7 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 				$eventID = $GLOBALS['survey_context']['event_id'];
 				$instance = intval( $_GET['instance'] ?? 1 );
 				$instrument = $GLOBALS['survey_context']['form_name'];
+				$this->performSurveyValuesValidate( $instrument );
 			}
 			$this->performDefaultValues( $instrument, $record, $eventID, $instance );
 		}
@@ -707,6 +709,40 @@ $(function()
 				$GLOBALS['Proj']->metadata[$fieldName]['misc'] =
 						"@DEFAULT='" . $randomnumber . "' " . $annotation;
 			}
+		}
+	}
+
+
+
+
+
+	// Enforce values validation for survey.
+
+	function performSurveyValuesValidate( $instrument )
+	{
+		if ( ! $this->getProjectSetting( 'enforce-validation' ) )
+		{
+			return;
+		}
+		if ( $this->getProjectSetting( 'enforce-validation-exempt-forms' ) )
+		{
+			$listExemptForms = $this->getProjectSetting( 'enforce-validation-exempt-form' );
+			$listExemptModes = $this->getProjectSetting( 'enforce-validation-exempt-mode' );
+			for ( $i = 0; $i < count( $listExemptForms ); $i++ )
+			{
+				if ( $listExemptForms[ $i ] == $instrument &&
+				     ( $listExemptModes[ $i ] == 'A' || $listExemptModes[ $i ] == 'V' ) )
+				{
+					return;
+				}
+			}
+		}
+		$listFieldNames = \REDCap::getFieldNames( $instrument );
+		foreach ( $listFieldNames as $fieldName )
+		{
+			$annotation = $GLOBALS['Proj']->metadata[$fieldName]['misc'];
+			$GLOBALS['Proj']->metadata[$fieldName]['misc'] =
+						"@FORCE-MINMAX " . $annotation;
 		}
 	}
 

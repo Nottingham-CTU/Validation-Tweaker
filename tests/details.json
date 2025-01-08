@@ -1,0 +1,62 @@
+[
+	{
+		"file" : "test_t01Fieldvalidationenforcement.py",
+		"name" : "Field validation enforcement",
+		"expected" : "Form submissions are prohibited where required fields are blank or values are outside validation ranges",
+		"scenario" : "With the 'require field validation' option set in settings, attempt to submit forms with blank/invalid values."
+	},
+	{
+		"file" : "test_t02Exemptionfromvalidationenforce.py",
+		"name" : "Exempt forms from validation enforcement",
+		"expected" : "Validation enforcement only occurs on non-exempt forms",
+		"scenario" : "With a form selected to be exempt, test on the exempt form and a non-exempt form."
+	},
+	{
+		"file" : "test_t03Prohibitfuturedates.py",
+		"name" : "Don't allow entry of future dates",
+		"expected" : "Dates in the future are treated as outside the validation range (unless exempted with action tag)",
+		"scenario" : "With the 'don't allow entry of dates in the future' option set in settings, attempt to enter dates in the future. Check that the @ALLOWFUTURE action tag works correctly."
+	},
+	{
+		"file" : "test_t04Surveyreqfieldoverride.py",
+		"name" : "Required fields override for surveys",
+		"expected" : "A 'continue anyway' option is provided on surveys if required fields are left blank",
+		"scenario" : "With the option to continue regardless of required fields on surveys enabled in settings, attempt to complete a survey while leaving required fields blank. Ensure the 'continue anyway' option functions correctly."
+	},
+	{
+		"file" : "test_t05Exemptionfromreqfieldoverride.py",
+		"name" : "Exempt forms from survey required fields override",
+		"expected" : "The 'continue anyway' option is only provided on non-exempt forms",
+		"scenario" : "With a form selected to be exempt, test that the option does not appear on the exempt form."
+	},
+	{
+		"file" : "test_t06REGEXactiontag.py",
+		"name" : "@REGEX action tag",
+		"expected" : "The field is validated according to the specified regular expression",
+		"scenario" : "With the @REGEX action tag enabled in module system settings, use the action tag on a field and confirm the validation works as expected."
+	},
+	{
+		"file" : "test_t07DEFAULTCALCactiontag.py",
+		"name" : "@DEFAULT-CALC action tag",
+		"expected" : "The result of the calculation is used as the default value for the field",
+		"scenario" : "With the @REGEX action tag enabled in module system settings, use the action tag on a field and confirm the field is populated as expected."
+	},
+	{
+		"file" : "test_t08RANDOMNUMBERactiontag.py",
+		"name" : "@RANDOMNUMBER action tag",
+		"expected" : "The default value of the field is a random number",
+		"scenario" : "With the @RANDOMNUMBER action tag enabled in module system settings, use the action tag on a field with and without range parameters and confirm the field is populated as expected."
+	},
+	{
+		"file" : "test_t09VALIDATELOGICactiontag.py",
+		"name" : "@VALIDATE-LOGIC action tag",
+		"expected" : "The field is validated according to the specified logic",
+		"scenario" : "Use the action tag on a field and check it is validated according to the logic."
+	},
+	{
+		"file" : "test_t10VALIDATEMESSAGEactiontag.py",
+		"name" : "@VALIDATE-MESSAGE action tag",
+		"expected" : "The validation error message is the string supplied using the action tag",
+		"scenario" : "Use the action tag on a field along with @VALIDATE-LOGIC or @REGEX and confirm that the error message displayed is the one that has been set."
+	}
+]

@@ -202,23 +202,21 @@ $(function()
     else
     {
       var vNotAfter = vNow.slice( 0, vFieldData.len )
-      var vFuncStrParts = vOldBlur.toString().match(/redcap_validate\((.*?,)(.*?),(.*?)(,.*)\)/)
+      var vFuncStrParts = vOldBlur.toString().match(/redcap_validate\((.*?,.*?,)(.*?)(,.*)\)/)
       var vFuncStrStart = vFuncStrParts[1]
-      var vEarliest = vFuncStrParts[2]
-      var vLatest = vFuncStrParts[3]
-      var vLatestVal = vLatest.match(/^(.*: *)?'(.*)'\)?$/)[2]
-      var vFuncStrEnd = vFuncStrParts[4]
-      if ( vLatestVal == '' )
+      var vLatest = vFuncStrParts[2]
+      var vFuncStrEnd = vFuncStrParts[3]
+      if ( vLatest == '' || vLatest == "''" )
       {
         vLatest = ( vFieldData.len == 10 ? "'today'" : "'now'" )
       }
-      else if ( vNotAfter != '' && vLatestVal != 'today' && vLatestVal != 'now' )
+      else if ( vNotAfter != '' && vLatest != 'today' && vLatest != 'now' )
       {
-        vLatest = "(" + vLatest + ".localeCompare('" + vNotAfter + "')>0?" +
-                  ( vFieldData.len == 10 ? 'today' : 'now' ) + ":" + vLatest + ")"
+        vLatest = "(((" + vLatest + ")==''||(" + vLatest + ").localeCompare('" + vNotAfter +
+                  "')>0)?'" + ( vFieldData.len == 10 ? 'today' : 'now' ) + "':(" + vLatest + "))"
       }
-      vFieldObj.onblur = new Function( 'redcap_validate(' + vFuncStrStart + vEarliest +
-                                       "," + vLatest + vFuncStrEnd + ')' )
+      vFieldObj.onblur = new Function( 'redcap_validate(' + vFuncStrStart +
+                                       vLatest + vFuncStrEnd + ')' )
     }
   })
 })

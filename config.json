@@ -96,6 +96,18 @@
 			"type" : "form-list",
 			"repeatable" : true,
 			"branchingLogic" : { "field" : "survey-skip-validate-exempt-forms", "value" : true }
+		},
+		{
+			"key" : "desc2",
+			"name" : "",
+			"type" : "descriptive",
+			"branchingLogic" : { "field" : "survey-skip-validate-exempt-forms", "value" : true }
+		},
+		{
+			"key" : "baseline-date",
+			"name" : "Baseline date",
+			"type" : "field-list",
+			"validation" : "date"
 		}
 	],
 	"action-tags" : [

@@ -82,3 +82,10 @@ complete.
 ### Exempt specific forms from survey continue option
 If the option to allow a survey submission despite incomplete required fields is selected, this
 option allows some forms to be exempted from this.
+
+## Baseline date
+If a date field is selected for this setting, a *recede baseline date* option will be shown next to
+the field when the project is in development status (or if the server is a development server). This
+allows the date to be pushed back by an amount and number of times specified by the user. If logic
+for alerts, form display, etc. are based on this field, this will have the effect of advancing the
+record to a future timepoint, which can be useful for testing.

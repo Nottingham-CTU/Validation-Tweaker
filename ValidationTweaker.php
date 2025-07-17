@@ -102,6 +102,7 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 		$this->outputDateValidation( $instrument, $record, $event_id, $repeat_instance );
 		$this->outputLogicRegexValidation( $instrument, $record, $event_id, $repeat_instance );
 		$this->outputEnforceValidation( $instrument );
+		$this->outputBaselineDateRecede( $record, $event_id, $repeat_instance );
 	}
 
 
@@ -115,6 +116,66 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 		$this->outputDateValidation( $instrument, $record, $event_id, $repeat_instance );
 		$this->outputLogicRegexValidation( $instrument, $record, $event_id, $repeat_instance );
 		$this->outputSurveyValidationSkip( $instrument );
+	}
+
+
+
+	// Provide the recede baseline date option.
+
+	protected function outputBaselineDateRecede( $record, $eventID, $instance )
+	{
+		if ( $this->getProjectStatus() != 'DEV' &&
+		     $this->query( 'SELECT `value` v FROM redcap_config WHERE field_name = ?',
+		                   ['is_development_server'] )->fetch_assoc()['v'] != '1' )
+		{
+			return;
+		}
+		$dateField = $this->getProjectSetting( 'baseline-date' );
+		if ( $dateField == '' )
+		{
+			return;
+		}
+		$recedeURL = preg_replace( '!^https?://[^/]*!', '', $this->getUrl( 'bdrecede.php' ) );
+		$recedeURL .= '&record=' . rawurlencode( $record ) . '&event_id=' . intval( $eventID ) .
+		              '&instance=' . intval( $instance );
+		$recedeURL = $this->escape( $recedeURL );
+
+			// Output JavaScript to apply the date validation.
+?>
+<script type="text/javascript">
+$(function()
+{
+  var vRecedeIcon = $('<a href="#"><i class="fas fa-clock-rotate-left"></i></a>')
+  vRecedeIcon.attr('title','Recede baseline date')
+  vRecedeIcon.on('click',function( ev )
+  {
+    ev.preventDefault()
+    simpleDialog( '<table><tr><td style="padding-right:20px">Interval</td><td><input ' +
+                  'type="number" name="rbd:interval" value="1" min="1" style="width:4em"> &nbsp;' +
+                  'days</td><td></td></tr><tr><td>Iterations</td><td><input type="number" ' +
+                  'name="rbd:iterations" value="1" min="1" max="150" style="width:4em"></td><td>' +
+                  '<input type="checkbox" name="rbd:slow"> Slow iterations</td></tr></table>',
+                  'Recede baseline date', null, 400, null, null,
+                  function ()
+                  {
+                    var vRecedeURL = $('<span></span>').html('<?php echo $recedeURL; ?>').text()
+                    vRecedeURL += '&interval=' + $('[name="rbd:interval"]').val()
+                    vRecedeURL += '&iterations=' + $('[name="rbd:iterations"]').val()
+                    if ( $('[name="rbd:slow"]').prop('checked') )
+                    {
+                      vRecedeURL += '&slow=1'
+                    }
+                    $.get( vRecedeURL )
+                    vRecedeIcon.css('display','none')
+                  })
+  })
+  $('[name="<?php echo $dateField; ?>"]').parents('td').first().append('&nbsp;&nbsp;')
+  $('[name="<?php echo $dateField; ?>"]').parents('td').first().append( vRecedeIcon )
+})
+</script>
+<?php
+
+
 	}
 
 
@@ -202,23 +263,21 @@ $(function()
     else
     {
       var vNotAfter = vNow.slice( 0, vFieldData.len )
-      var vFuncStrParts = vOldBlur.toString().match(/redcap_validate\((.*?,)(.*?),(.*?)(,.*)\)/)
+      var vFuncStrParts = vOldBlur.toString().match(/redcap_validate\((.*?,.*?,)(.*?)(,.*)\)/)
       var vFuncStrStart = vFuncStrParts[1]
-      var vEarliest = vFuncStrParts[2]
-      var vLatest = vFuncStrParts[3]
-      var vLatestVal = vLatest.match(/^(.*: *)?'(.*)'\)?$/)[2]
-      var vFuncStrEnd = vFuncStrParts[4]
-      if ( vLatestVal == '' )
+      var vLatest = vFuncStrParts[2]
+      var vFuncStrEnd = vFuncStrParts[3]
+      if ( vLatest == '' || vLatest == "''" )
       {
         vLatest = ( vFieldData.len == 10 ? "'today'" : "'now'" )
       }
-      else if ( vNotAfter != '' && vLatestVal != 'today' && vLatestVal != 'now' )
+      else if ( vNotAfter != '' && vLatest != 'today' && vLatest != 'now' )
       {
-        vLatest = "(" + vLatest + ".localeCompare('" + vNotAfter + "')>0?" +
-                  ( vFieldData.len == 10 ? 'today' : 'now' ) + ":" + vLatest + ")"
+        vLatest = "(((" + vLatest + ")==''||(" + vLatest + ").localeCompare('" + vNotAfter +
+                  "')>0)?'" + ( vFieldData.len == 10 ? 'today' : 'now' ) + "':(" + vLatest + "))"
       }
-      vFieldObj.onblur = new Function( 'redcap_validate(' + vFuncStrStart + vEarliest +
-                                       "," + vLatest + vFuncStrEnd + ')' )
+      vFieldObj.onblur = new Function( 'redcap_validate(' + vFuncStrStart +
+                                       vLatest + vFuncStrEnd + ')' )
     }
   })
 })

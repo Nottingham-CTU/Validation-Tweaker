@@ -96,7 +96,7 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 
 	// Provide the features on data entry forms (not surveys).
 
-	public function redcap_data_entry_form_top( $project_id, $record=null, $instrument, $event_id,
+	public function redcap_data_entry_form_top( $project_id, $record, $instrument, $event_id,
 	                                            $group_id=null, $repeat_instance=1 )
 	{
 		$this->outputDateValidation( $instrument, $record, $event_id, $repeat_instance );
@@ -109,7 +109,7 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 
 	// Provide the features on surveys.
 
-	public function redcap_survey_page_top( $project_id, $record=null, $instrument, $event_id,
+	public function redcap_survey_page_top( $project_id, $record, $instrument, $event_id,
 	                                        $group_id=null, $survey_hash=null, $response_id=null,
 	                                        $repeat_instance=1 )
 	{
@@ -649,11 +649,13 @@ $(function()
 
 		// Output JavaScript.
 		addLangToJS( [ 'data_entry_287', 'survey_163', 'data_entry_199',
-		               'survey_1312', 'data_entry_212' ] );
+		               'survey_1312', 'data_entry_212', 'data_entry_536' ] );
 ?>
 <script type="text/javascript">
 $(function()
 {
+  var vLastPage = ($('button[name="submit-btn-saverecord"]').find('[data-rc-lang="data_entry_536"' +
+                   '],[data-mlm="survey-survey_btn_text_next_page"]').length == 0)
   var vDialogCount = 0
   var vDialogTimer = setInterval( function()
   {
@@ -677,7 +679,7 @@ $(function()
                        vForm.attr('action', vForm.attr('action') + '&__skipvalidate=1')
                        vForm.submit()
                      },
-                     lang.data_entry_212)
+                     ( vLastPage ? lang.data_entry_212 : lang.data_entry_536 ))
         return false
       })
       var vContinueDiv = $('<div style="float:left;margin-top:10px;margin-left:5px"></div>')

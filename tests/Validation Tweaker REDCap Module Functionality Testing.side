@@ -2640,7 +2640,7 @@
         },
         {
           "command": "type",
-          "target": "xpath=//div[contains(@class,'ui-dialog')]//a[contains(text(),'Continue anyway')]",
+          "target": "xpath=//div[contains(@class,'ui-dialog')]//a[contains(text(),'More save options')]",
           "value": "SAVESCREENSHOT",
           "id": "0ee14cb7-26fc-48d8-a024-8e6b71fbcc7b"
         },
@@ -2648,15 +2648,7 @@
           "id": "f89caf05-d0c2-4571-9b40-e773913927f6",
           "comment": "",
           "command": "assertElementPresent",
-          "target": "xpath=//div[contains(@class,'ui-dialog')]//a[contains(text(),'Continue anyway')]",
-          "targets": [],
-          "value": ""
-        },
-        {
-          "id": "7c44118f-2b97-4f90-9adb-33b31299ee8a",
-          "comment": "",
-          "command": "chooseOkOnNextConfirmation",
-          "target": "",
+          "target": "xpath=//div[contains(@class,'ui-dialog')]//a[contains(text(),'More save options')]",
           "targets": [],
           "value": ""
         },
@@ -2664,17 +2656,17 @@
           "id": "345bc427-3184-4b08-a57e-3390803a0529",
           "comment": "",
           "command": "click",
-          "target": "xpath=//div[contains(@class,'ui-dialog')]//a[contains(text(),'Continue anyway')]",
+          "target": "xpath=//div[contains(@class,'ui-dialog')]//a[contains(text(),'More save options')]",
           "targets": [],
           "value": ""
         },
         {
-          "id": "eb09e88f-6d54-406d-87b4-75efc6bb4510",
           "comment": "",
-          "command": "webdriverChooseOkOnVisibleConfirmation",
-          "target": "",
+          "command": "click",
+          "target": "xpath=//div[contains(@class,'ui-dialog')]//button[contains(text(),'Mark Survey as Complete')]",
           "targets": [],
-          "value": ""
+          "value": "",
+          "id": "cb5eeabd-66cf-4cbf-af5d-96455c3c5d0c"
         },
         {
           "command": "runScript",
@@ -2958,7 +2950,7 @@
           "id": "8d5cdc5a-cc89-4f80-a142-b20a7e081acf",
           "comment": "",
           "command": "assertElementNotPresent",
-          "target": "xpath=//div[contains(@class,'ui-dialog')]//a[contains(text(),'Continue anyway')]",
+          "target": "xpath=//div[contains(@class,'ui-dialog')]//a[contains(text(),'More save options')]",
           "targets": [],
           "value": ""
         },

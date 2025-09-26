@@ -37,10 +37,10 @@ class Test_04_Survey_req_field_override:
     WebDriverWait(self.driver, 30).until(expected_conditions.presence_of_element_located((By.ID, "footer")))
     self.driver.find_element(By.NAME, "submit-btn-saverecord").click()
     self.driver.execute_script("//SETDESC:Assert option to continue survey is present")
-    self.driver.find_element(By.XPATH, "//div[contains(@class,'ui-dialog')]//a[contains(text(),'Continue anyway')]").send_keys("SAVESCREENSHOT")
-    assert len(self.driver.find_elements(By.XPATH, "//div[contains(@class,'ui-dialog')]//a[contains(text(),'Continue anyway')]")) > 0
-    self.driver.find_element(By.XPATH, "//div[contains(@class,'ui-dialog')]//a[contains(text(),'Continue anyway')]").click()
-    self.driver.switch_to.alert.accept()
+    self.driver.find_element(By.XPATH, "//div[contains(@class,'ui-dialog')]//a[contains(text(),'More save options')]").send_keys("SAVESCREENSHOT")
+    assert len(self.driver.find_elements(By.XPATH, "//div[contains(@class,'ui-dialog')]//a[contains(text(),'More save options')]")) > 0
+    self.driver.find_element(By.XPATH, "//div[contains(@class,'ui-dialog')]//a[contains(text(),'More save options')]").click()
+    self.driver.find_element(By.XPATH, "//div[contains(@class,'ui-dialog')]//button[contains(text(),'Mark Survey as Complete')]").click()
     self.driver.execute_script("//SAVEDESC:Assert survey submitted")
     assert len(self.driver.find_elements(By.ID, "surveyacknowledgment")) > 0
     self.driver.execute_script("//SAVEDESC:Go back to form")

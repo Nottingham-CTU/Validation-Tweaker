@@ -38,7 +38,7 @@ class Test_05_Exemption_from_req_field_override:
     self.driver.find_element(By.NAME, "submit-btn-saverecord").click()
     self.driver.execute_script("//SETDESC:Assert option to continue survey is not present")
     self.driver.find_element(By.XPATH, "//div[contains(@class,'ui-dialog')]").send_keys("SAVESCREENSHOT")
-    assert len(self.driver.find_elements(By.XPATH, "//div[contains(@class,'ui-dialog')]//a[contains(text(),'Continue anyway')]")) == 0
+    assert len(self.driver.find_elements(By.XPATH, "//div[contains(@class,'ui-dialog')]//a[contains(text(),'More save options')]")) == 0
     self.driver.execute_script("//SAVEDESC:Go back to form")
     self.driver.execute_script("window.history.back()")
     self.driver.execute_script("window.history.back()")

@@ -5,8 +5,12 @@ This REDCap module provides options to adjust how validation is performed.
 
 ## Field validation using conditional logic and regular expressions
 
-There are 3 action tags which can be used to provide additional field validation capabilities:
+There are 5 action tags which can be used to provide additional field validation capabilities:
 
+* **@LOWERCASE** &ndash; Forces a text value to be lowercase, this is done automatically as the text
+  is typed.
+* **@UPPERCASE** &ndash; Forces a text value to be uppercase, this is done automatically as the text
+  is typed.
 * **@VALIDATE-LOGIC** &ndash; This can be used to supply conditional logic which must be valid in
   order for the field value to be accepted.<br>
   For example, if using an *email* and *confirm email* field, the confirm field could utilise the

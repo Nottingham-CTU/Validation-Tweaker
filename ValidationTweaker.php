@@ -465,12 +465,10 @@ $(function()
 		// Any invalid regular expressions will be ignored.
 		$listLogicFields = [];
 		$listFormFields = \REDCap::getDataDictionary( 'array', false, true, $instrument );
-		$listFieldNames = [];
+		$listFieldNames = array_keys( $listFormFields );
 		foreach ( $listFormFields as $fieldName => $infoField )
 		{
-			$listFieldNames[] = $fieldName;
-			if ( in_array( $infoField[ 'field_type' ], [ 'text', 'notes' ] ) &&
-			     $infoField[ self::VTYPE ] == '' )
+			if ( in_array( $infoField[ 'field_type' ], [ 'text', 'notes' ] ) )
 			{
 				$annotation = \Form::replaceIfActionTag( $infoField[ 'field_annotation' ],
 				                                         $this->getProjectId(), $record,
@@ -492,61 +490,66 @@ $(function()
 				}
 				$fieldLogic =
 						\Form::getValueInParenthesesActionTag( $annotation, '@VALIDATE-LOGIC' );
-				if ( $hasRegex || $fieldLogic != '' )
+				if ( $fieldLogic != '' )
 				{
-					if ( $fieldLogic != '' )
+					$listFL = preg_split( '/([\'"])/', $fieldLogic, -1,
+					                      PREG_SPLIT_DELIM_CAPTURE );
+					$flQuote = '';
+					$flField = '';
+					$fieldLogic = '';
+					foreach ( $listFL as $flPart )
 					{
-						$listFL = preg_split( '/([\'"])/', $fieldLogic, -1,
-						                      PREG_SPLIT_DELIM_CAPTURE );
-						$flQuote = '';
-						$flField = '';
-						$fieldLogic = '';
-						foreach ( $listFL as $flPart )
+						if ( $flQuote == '' && ( $flPart == "'" || $flPart == '"' ) )
 						{
-							if ( $flQuote == '' && ( $flPart == "'" || $flPart == '"' ) )
-							{
-								$flQuote = $strPart;
-							}
-							elseif ( $flQuote != '' && $flQuote == $flPart )
-							{
-								$flQuote = '';
-							}
-							elseif ( $flQuote == '' )
-							{
-								$listFL2 = preg_split( '/((?:\\[[A-Za-z0-9_-]+\\]){1,3})/',
-								                       $flPart, -1, PREG_SPLIT_DELIM_CAPTURE );
-								$flPart = '';
-								foreach ( $listFL2 as $flPart2 )
-								{
-									if ( preg_match( '/((?:\\[[A-Za-z0-9_-]+\\]){1,3})/',
-									     $flPart2 ) && ! in_array( substr( $flPart2, 1, -1 ),
-									                               $listFieldNames ) )
-									{
-										$flPart2 =
-											\REDCap::evaluateLogic( $flPart2, $this->getProjectId(),
-											                        $record, $eventID, $instance,
-											                        $instrument, $instrument, null,
-											                        true, false );
-										if ( strpos( $flPart2, "'" ) === false )
-										{
-											$flPart2 = "'" . $flPart2 . "'";
-										}
-										else
-										{
-											$flPart2 = '"' . $flPart2 . "'";
-										}
-									}
-									$flPart .= $flPart2;
-								}
-							}
-							$fieldLogic .= $flPart;
+							$flQuote = $strPart;
 						}
-						$fieldLogic = \LogicTester::formatLogicToJS( $fieldLogic, false, $eventID,
-						                                             false, $this->getProjectId() );
+						elseif ( $flQuote != '' && $flQuote == $flPart )
+						{
+							$flQuote = '';
+						}
+						elseif ( $flQuote == '' )
+						{
+							$listFL2 = preg_split( '/((?:\\[[A-Za-z0-9_-]+\\]){1,3})/',
+							                       $flPart, -1, PREG_SPLIT_DELIM_CAPTURE );
+							$flPart = '';
+							foreach ( $listFL2 as $flPart2 )
+							{
+								if ( preg_match( '/((?:\\[[A-Za-z0-9_-]+\\]){1,3})/',
+								     $flPart2 ) && ! in_array( substr( $flPart2, 1, -1 ),
+								                               $listFieldNames ) )
+								{
+									$flPart2 =
+										\REDCap::evaluateLogic( $flPart2, $this->getProjectId(),
+										                        $record, $eventID, $instance,
+										                        $instrument, $instrument, null,
+										                        true, false );
+									if ( strpos( $flPart2, "'" ) === false )
+									{
+										$flPart2 = "'" . $flPart2 . "'";
+									}
+									else
+									{
+										$flPart2 = '"' . $flPart2 . "'";
+									}
+								}
+								$flPart .= $flPart2;
+							}
+						}
+						$fieldLogic .= $flPart;
 					}
+					$fieldLogic = \LogicTester::formatLogicToJS( $fieldLogic, false, $eventID,
+					                                             false, $this->getProjectId() );
+				}
+				$forceUppercase = preg_match( "/(^|\\s)@UPPERCASE(\\s|$)/", $annotation );
+				$forceLowercase = ( ! $forceUppercase &&
+				                    preg_match( "/(^|\\s)@LOWERCASE(\\s|$)/", $annotation ) );
+				if ( $hasRegex || $fieldLogic != '' || $forceUppercase || $forceLowercase )
+				{
 					$message = \Form::getValueInQuotesActionTag( $annotation, '@VALIDATE-MESSAGE' );
 					$listLogicFields[ $fieldName ] = [ 'regex' => $fieldRegex,
 					                                   'logic' => $fieldLogic,
+					                                   'lcase' => $forceLowercase,
+					                                   'ucase' => $forceUppercase,
 					                                   'type' => $infoField[ 'field_type' ],
 					                                   'message' => $message ];
 				}
@@ -570,26 +573,25 @@ $(function()
     {
       vElem.style.fontWeight = 'normal'
       vElem.style.backgroundColor = '#FFFFFF'
+      return true
     }
-    else
+    var vPopupID = 'redcapValidationErrorPopup'
+    var vPopupMsg = 'The value you provided could not be validated because it does not follow ' +
+                    'the expected format. Please try again.'
+    if ( vMessage != '' )
     {
-      var vPopupID = 'redcapValidationErrorPopup'
-      var vPopupMsg = 'The value you provided could not be validated because it does not follow ' +
-                      'the expected format. Please try again.'
-      if ( vMessage != '' )
-      {
-        vPopupMsg = vMessage
-      }
-      $('#' + vPopupID).remove()
-      initDialog( vPopupID )
-      $('#' + vPopupID).html(vPopupMsg)
-      setTimeout( function()
-      {
-        simpleDialog( vPopupMsg, null, vPopupID, null, '' )
-      }, 20 )
-      vElem.style.fontWeight = 'bold'
-      vElem.style.backgroundColor = '#FFB7BE'
+      vPopupMsg = vMessage
     }
+    $('#' + vPopupID).remove()
+    initDialog( vPopupID )
+    $('#' + vPopupID).html(vPopupMsg)
+    setTimeout( function()
+    {
+      simpleDialog( vPopupMsg, null, vPopupID, null, function() { vElem.focus() } )
+    }, 20 )
+    vElem.style.fontWeight = 'bold'
+    vElem.style.backgroundColor = '#FFB7BE'
+    return false
   }
   var vFields = JSON.parse( $('<div></div>')
                 .html('<?php echo addslashes( $this->escape( json_encode($listLogicFields) ) ); ?>')
@@ -609,10 +611,32 @@ $(function()
     {
       return
     }
-    vFieldObj = vFieldObj[0]
-    vFieldObj.onblur = function()
+    if ( vFieldData.regex != '' || vFieldData.logic != '' )
     {
-      vFuncValidate( this, vFieldData.regex, vFieldData.logic, vFieldData.message )
+      var vOrigValidate = function(){return true}
+      if ( typeof vFieldObj[0].onblur == 'function' )
+      {
+        vOrigValidate = vFieldObj[0].onblur
+      }
+      vFieldObj[0].onblur = function()
+      {
+        if ( vFuncValidate( this, vFieldData.regex, vFieldData.logic, vFieldData.message ) )
+        {
+          vOrigValidate.call( this )
+        }
+      }
+    }
+    if ( vFieldData.ucase )
+    {
+      vFieldObj.on('change',function(){this.value = this.value.toUpperCase()})
+      vFieldObj.on('keyup',function(){this.value = this.value.toUpperCase()})
+      vFieldObj.on('blur',function(){this.value = this.value.toUpperCase()})
+    }
+    else if ( vFieldData.lcase )
+    {
+      vFieldObj.on('change',function(){this.value = this.value.toLowerCase()})
+      vFieldObj.on('keyup',function(){this.value = this.value.toLowerCase()})
+      vFieldObj.on('blur',function(){this.value = this.value.toLowerCase()})
     }
   })
 })

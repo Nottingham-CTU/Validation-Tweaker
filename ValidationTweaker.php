@@ -648,6 +648,8 @@ $(function()
 
 
 		// Output JavaScript.
+		addLangToJS( [ 'data_entry_287', 'survey_163', 'data_entry_199',
+		               'survey_1312', 'data_entry_212' ] );
 ?>
 <script type="text/javascript">
 $(function()
@@ -659,18 +661,23 @@ $(function()
     if ( vDialogBottom.length > 0 )
     {
       clearInterval( vDialogTimer )
-      var vContinueLink = $('<a href="#" style="color:#6d6d88">Continue anyway...</a>')
+      var vContinueLink = $('<a href="#" style="color:#6d6d88">' + lang.data_entry_287 + '</a>')
       vContinueLink.on('click', function()
       {
         var vForm = $('#form')
-        if ( confirm( 'WARNING: Some questions have not been answered.\n\n' +
-                      'It is highly recommended that you cancel now and ' +
-                      'complete every question.\n\n' +
-                      'Are you sure you want to continue?' ) )
-        {
-          vForm.attr('action', vForm.attr('action') + '&__skipvalidate=1')
-          vForm.submit()
-        }
+        simpleDialog(lang.survey_163,
+                     lang.data_entry_199, null, null,
+                     function()
+                     {
+                       vDialogBottom.find('button').trigger('click')
+                     },
+                     lang.survey_1312,
+                     function()
+                     {
+                       vForm.attr('action', vForm.attr('action') + '&__skipvalidate=1')
+                       vForm.submit()
+                     },
+                     lang.data_entry_212)
         return false
       })
       var vContinueDiv = $('<div style="float:left;margin-top:10px;margin-left:5px"></div>')

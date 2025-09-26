@@ -75,9 +75,8 @@ entered. This can be overridden on a per-field basis with the **@ALLOWFUTURE** a
 
 ## Provide option on surveys to continue regardless of whether required fields are complete
 This option can be enabled in the module project settings. If enabled, survey respondants will be
-provided with an option to *continue anyway* if there are required fields which have not been
-completed. This will, following a warning, allow them to proceed despite the survey not being
-complete.
+provided with a *more save options* link if there are required fields which have not been completed.
+This will, following a warning, allow them to proceed despite the survey not being complete.
 
 ### Exempt specific forms from survey continue option
 If the option to allow a survey submission despite incomplete required fields is selected, this

@@ -311,6 +311,12 @@
           "id": "1680602e-00b9-491d-a026-4e35bad2afa3"
         },
         {
+          "command": "select",
+          "target": "name=baseline-date",
+          "value": "value=dob",
+          "id": "75fb21bb-211e-46b4-974c-7be36e295023"
+        },
+        {
           "id": "bc522466-bdfe-4121-a9dc-848b2a20f2cb",
           "comment": "",
           "command": "click",
@@ -865,12 +871,124 @@
           "value": ""
         },
         {
+          "comment": "",
+          "command": "pause",
+          "target": "1000",
+          "targets": [],
+          "value": "",
+          "id": "3be28e63-5b03-4adf-9e95-6772d41b9844"
+        },
+        {
+          "comment": "",
+          "command": "click",
+          "target": "id=btn-last",
+          "targets": [],
+          "value": "",
+          "id": "12289952-acd0-4728-83eb-e17dab94cf0d"
+        },
+        {
+          "comment": "",
+          "command": "waitForElementPresent",
+          "target": "id=field_type",
+          "targets": [],
+          "value": "30000",
+          "id": "4ecee6cd-f0c6-4c93-a874-077185ebbb0e"
+        },
+        {
+          "comment": "",
+          "command": "select",
+          "target": "id=field_type",
+          "targets": [],
+          "value": "value=text",
+          "id": "eed26443-0b73-45b8-8e36-fd3c49da16a6"
+        },
+        {
+          "comment": "",
+          "command": "type",
+          "target": "id=field_name",
+          "targets": [],
+          "value": "taguppercase",
+          "id": "5378f5c3-5c36-426d-bae1-a29c6493bcac"
+        },
+        {
+          "comment": "",
+          "command": "runScript",
+          "target": "$('#field_annotation').val('@UPPERCASE')",
+          "targets": [],
+          "value": "",
+          "id": "ef268d87-8a3e-492f-9230-d75c545e820f"
+        },
+        {
+          "comment": "",
+          "command": "click",
+          "target": "xpath=//div[@aria-describedby='div_add_field']//button[contains(text(),'Save')]",
+          "targets": [],
+          "value": "",
+          "id": "db494ca9-052e-47af-a7ae-5c085a0b80f5"
+        },
+        {
           "id": "58c86e44-16a5-4e87-b6c2-9471da595806",
           "comment": "",
           "command": "pause",
           "target": "1000",
           "targets": [],
           "value": ""
+        },
+        {
+          "comment": "",
+          "command": "click",
+          "target": "id=btn-last",
+          "targets": [],
+          "value": "",
+          "id": "42fe138e-6138-43ca-9bef-a706e056e9fe"
+        },
+        {
+          "comment": "",
+          "command": "waitForElementPresent",
+          "target": "id=field_type",
+          "targets": [],
+          "value": "30000",
+          "id": "5935a039-48c2-4974-902a-465ba9e59081"
+        },
+        {
+          "comment": "",
+          "command": "select",
+          "target": "id=field_type",
+          "targets": [],
+          "value": "value=text",
+          "id": "be348876-094d-4cfe-b926-acca31f91369"
+        },
+        {
+          "comment": "",
+          "command": "type",
+          "target": "id=field_name",
+          "targets": [],
+          "value": "taglowercase",
+          "id": "678660cc-4a19-4543-9114-54586d5bd9bd"
+        },
+        {
+          "comment": "",
+          "command": "runScript",
+          "target": "$('#field_annotation').val('@LOWERCASE')",
+          "targets": [],
+          "value": "",
+          "id": "2187b666-7696-4398-b6f6-0895c5dbf9e5"
+        },
+        {
+          "comment": "",
+          "command": "click",
+          "target": "xpath=//div[@aria-describedby='div_add_field']//button[contains(text(),'Save')]",
+          "targets": [],
+          "value": "",
+          "id": "70dde5c5-1a47-40bb-8083-5c064872ab0a"
+        },
+        {
+          "comment": "",
+          "command": "pause",
+          "target": "1000",
+          "targets": [],
+          "value": "",
+          "id": "f8791cf7-4fb6-458c-8904-ae6c56ab0340"
         }
       ]
     },
@@ -4469,6 +4587,548 @@
           "target": "id=south",
           "targets": [],
           "value": "30000"
+        }
+      ]
+    },
+    {
+      "id": "7aaacf82-4c3b-4018-bdfb-2b5bc51cf8f2",
+      "name": "t11 Baseline date",
+      "commands": [
+        {
+          "id": "0a756cc6-1232-42e1-8e2d-5584e1cd2f22",
+          "command": "open",
+          "target": "/",
+          "value": ""
+        },
+        {
+          "comment": "",
+          "command": "click",
+          "target": "linkText=My Projects",
+          "targets": [],
+          "value": "",
+          "id": "4ae8e68e-2474-4794-93bf-6ab09c9939a8"
+        },
+        {
+          "comment": "",
+          "command": "assertElementPresent",
+          "target": "xpath=//*[@id=\"table-proj_table\"][contains(.,'Validation Tweaker Test')]",
+          "targets": [],
+          "value": "",
+          "id": "ec2b0f37-09e8-48a5-8e69-de5f7ea56e14"
+        },
+        {
+          "comment": "",
+          "command": "click",
+          "target": "linkText=Validation Tweaker Test",
+          "targets": [],
+          "value": "",
+          "id": "20d7a75f-92f9-4639-9b1b-d6e6e68cd8f8"
+        },
+        {
+          "comment": "",
+          "command": "click",
+          "target": "css=a[href*=\"record_status_dashboard.php\"]",
+          "targets": [],
+          "value": "",
+          "id": "70e3aee3-aa5b-4274-be23-37510f4b106c"
+        },
+        {
+          "comment": "",
+          "command": "click",
+          "target": "css=button[onclick*=\"record_home.php\"][onclick*=\"auto=1\"]",
+          "targets": [],
+          "value": "",
+          "id": "39eaec52-4c20-4e8c-b747-41e36bc22296"
+        },
+        {
+          "command": "runScript",
+          "target": "//SETDESC:Click \"Pre-Screening Survey\"",
+          "value": "",
+          "id": "7b27ebb7-31ff-4401-b8fe-e7192b78ccad"
+        },
+        {
+          "comment": "",
+          "command": "click",
+          "target": "css=#event_grid_table a[href*=\"page=prescreening_survey\"]",
+          "targets": [],
+          "value": "",
+          "id": "1eea1de0-7051-42cc-92f0-3477d6a73ae5"
+        },
+        {
+          "command": "click",
+          "target": "css=button[onclick*=\"setToday\"]",
+          "value": "",
+          "id": "92ab2dc6-d6ea-49e1-a7d9-7431c396fa06"
+        },
+        {
+          "command": "runScript",
+          "target": "//SETDESC:Click \"Save & Stay\"",
+          "value": "",
+          "id": "e8ab7ec6-6f90-4729-85de-1e8233f3fb56"
+        },
+        {
+          "command": "type",
+          "target": "css=[id=\"submit-btn-savecontinue\"]",
+          "value": "SAVESCREENSHOT",
+          "id": "f5754575-2f5f-4fc3-a7df-4d6aae62f1de"
+        },
+        {
+          "comment": "",
+          "command": "runScript",
+          "target": "$('#south').remove();dataEntrySubmit('submit-btn-savecontinue')",
+          "targets": [],
+          "value": "",
+          "id": "f3089599-0134-4ce6-adb9-61e60f473370"
+        },
+        {
+          "comment": "",
+          "command": "waitForElementPresent",
+          "target": "id=south",
+          "targets": [],
+          "value": "30000",
+          "id": "d78c6549-7243-490f-884f-b633cdbf3dac"
+        },
+        {
+          "command": "runScript",
+          "target": "//SETDESC:Assert recede baseline date option displayed",
+          "value": "",
+          "id": "7caf96d1-f064-44a3-a831-55edf7b58415"
+        },
+        {
+          "command": "type",
+          "target": "css=a[title=\"Recede baseline date\"]",
+          "value": "SAVESCREENSHOT",
+          "id": "40c2ea60-8598-493e-a525-a74dabb32be6"
+        },
+        {
+          "comment": "",
+          "command": "assertElementPresent",
+          "target": "css=a[title=\"Recede baseline date\"]",
+          "targets": [],
+          "value": "",
+          "id": "b6b91874-b63c-4138-ad10-032533a5348c"
+        },
+        {
+          "command": "runScript",
+          "target": "sessionStorage.setItem('test-dateprerecede',$('[name=\"dob\"]').val())",
+          "value": "",
+          "id": "11c3dc45-9d83-4df4-9dbc-35dfb431fa96"
+        },
+        {
+          "command": "runScript",
+          "target": "//SETDESC:Click \"Recede baseline date\"",
+          "value": "",
+          "id": "5f066ed4-cb46-455f-a0a3-ff118c77f695"
+        },
+        {
+          "command": "click",
+          "target": "css=a[title=\"Recede baseline date\"]",
+          "value": "",
+          "id": "9463a808-886b-424c-abc4-2162c6f30f51"
+        },
+        {
+          "command": "click",
+          "target": "xpath=//div[contains(@class,'ui-dialog')]//button[contains(text(),'Okay')]",
+          "value": "",
+          "id": "2489cf7f-10c1-48f3-9bb2-1bb54260e842"
+        },
+        {
+          "command": "pause",
+          "target": "2000",
+          "value": "",
+          "id": "b91ed73d-78a5-4f40-9239-5a9943400506"
+        },
+        {
+          "command": "runScript",
+          "target": "$('#south').remove();window.location.reload()",
+          "value": "",
+          "id": "a304561d-c383-4b8e-9b97-e5d15b1d55ee"
+        },
+        {
+          "comment": "",
+          "command": "waitForElementPresent",
+          "target": "id=south",
+          "targets": [],
+          "value": "30000",
+          "id": "afb5d0ca-cbbc-4cdb-a332-f9f5dea4db83"
+        },
+        {
+          "command": "runScript",
+          "target": "if(sessionStorage.getItem('test-dateprerecede')!=$('[name=\"dob\"]').val())$('body').attr('data-recede','1')",
+          "value": "",
+          "id": "8394d6a4-08f3-4f8f-a971-de82acf601ee"
+        },
+        {
+          "command": "runScript",
+          "target": "//SAVEDESC:Reload the page",
+          "value": "",
+          "id": "56cc5e90-4e01-46a7-8de8-16aa8a3c4907"
+        },
+        {
+          "command": "runScript",
+          "target": "//SETDESC:Assert date has changed",
+          "value": "",
+          "id": "541f1464-b973-46c5-adc3-c3064f44f542"
+        },
+        {
+          "command": "type",
+          "target": "css=[name=\"dob\"]",
+          "value": "SAVESCREENSHOT",
+          "id": "ae37c534-57ad-43de-a713-7974d01bc3ef"
+        },
+        {
+          "command": "assertElementPresent",
+          "target": "css=body[data-recede]",
+          "value": "",
+          "id": "36cd7bc3-6ecc-4149-b3c8-622742f486dd"
+        },
+        {
+          "command": "runScript",
+          "target": "//SETDESC:Click \"Delete data\"",
+          "value": "",
+          "id": "f3141109-ba9a-4314-9d42-4afbc55de900"
+        },
+        {
+          "command": "type",
+          "target": "css=[name=\"submit-btn-deleteform\"]",
+          "value": "SAVESCREENSHOT",
+          "id": "fcfce437-d90d-4365-9ea3-9ad0ce12cfb4"
+        },
+        {
+          "comment": "",
+          "command": "runScript",
+          "target": "$('#south').remove();dataEntrySubmit('submit-btn-deleteform')",
+          "targets": [],
+          "value": "",
+          "id": "e5ce3691-ec34-46c0-9b47-48c785ef40ef"
+        },
+        {
+          "comment": "",
+          "command": "waitForElementPresent",
+          "target": "id=south",
+          "targets": [],
+          "value": "30000",
+          "id": "bb21c287-67e1-4ed5-b332-8bdc4a345de3"
+        },
+        {
+          "comment": "",
+          "command": "runScript",
+          "target": "$('#south').remove()",
+          "targets": [],
+          "value": "",
+          "id": "5bd6c7c8-9f6c-467a-b072-1d4d11bdd094"
+        },
+        {
+          "command": "click",
+          "target": "id=recordActionDropdownTrigger",
+          "value": "",
+          "id": "c477e233-5b5a-47bc-b518-b4f86e2c9bdf"
+        },
+        {
+          "command": "click",
+          "target": "css=[onclick*=\"deleteRecord\"]",
+          "value": "",
+          "id": "da96dcc8-7f90-4b64-b95e-15b9a98339c4"
+        },
+        {
+          "comment": "",
+          "command": "click",
+          "target": "css=.ok-button",
+          "targets": [],
+          "value": "",
+          "id": "e6545040-9780-4aba-8b87-49e33642f242"
+        },
+        {
+          "comment": "",
+          "command": "click",
+          "target": "xpath=//button[contains(text(),'Close')]",
+          "targets": [],
+          "value": "",
+          "id": "27c003b5-38bf-4ada-a66a-0a7e5093b204"
+        },
+        {
+          "comment": "",
+          "command": "waitForElementPresent",
+          "target": "id=south",
+          "targets": [],
+          "value": "30000",
+          "id": "1b28d409-fbbe-41b5-85c4-24c9e594106f"
+        }
+      ]
+    },
+    {
+      "id": "3565b0db-c812-4be7-b9a4-ff0bd743b69d",
+      "name": "t12 UPPERCASE/LOWERCASE action tags",
+      "commands": [
+        {
+          "id": "651b2b7b-1002-44dd-a7e7-aee00d7426e7",
+          "command": "open",
+          "target": "/",
+          "value": ""
+        },
+        {
+          "comment": "",
+          "command": "click",
+          "target": "linkText=My Projects",
+          "targets": [],
+          "value": "",
+          "id": "97e86b77-7370-488f-beda-15c5c37d27a6"
+        },
+        {
+          "comment": "",
+          "command": "assertElementPresent",
+          "target": "xpath=//*[@id=\"table-proj_table\"][contains(.,'Validation Tweaker Test')]",
+          "targets": [],
+          "value": "",
+          "id": "22f8bc93-71fd-4b16-a1d4-ddf66fbeaaa2"
+        },
+        {
+          "comment": "",
+          "command": "click",
+          "target": "linkText=Validation Tweaker Test",
+          "targets": [],
+          "value": "",
+          "id": "e461fda8-6750-43ee-b69c-7698058a93c1"
+        },
+        {
+          "comment": "",
+          "command": "click",
+          "target": "css=a[href*=\"record_status_dashboard.php\"]",
+          "targets": [],
+          "value": "",
+          "id": "92f4cce7-e7ad-4314-9411-4f5bcc72bd83"
+        },
+        {
+          "comment": "",
+          "command": "click",
+          "target": "css=button[onclick*=\"record_home.php\"][onclick*=\"auto=1\"]",
+          "targets": [],
+          "value": "",
+          "id": "2860949f-3ae4-441e-8fb9-d5db3159ddee"
+        },
+        {
+          "command": "runScript",
+          "target": "//SETDESC:Click \"Pre-Screening Survey\"",
+          "value": "",
+          "id": "4e76116c-8ad9-4ae7-b4eb-b26b822622b7"
+        },
+        {
+          "comment": "",
+          "command": "click",
+          "target": "css=#event_grid_table a[href*=\"page=prescreening_survey\"]",
+          "targets": [],
+          "value": "",
+          "id": "8441bb01-ca28-4510-aa74-6c76e93549dd"
+        },
+        {
+          "command": "runScript",
+          "target": "//SETDESC:Click \"Save & Exit Form\"",
+          "value": "",
+          "id": "ecb447d1-1bab-4756-a97b-7a1381d5fc7b"
+        },
+        {
+          "command": "type",
+          "target": "css=[id=\"submit-btn-saverecord\"]",
+          "value": "SAVESCREENSHOT",
+          "id": "5e5acff6-1451-43ac-a883-3c7885e62035"
+        },
+        {
+          "comment": "",
+          "command": "runScript",
+          "target": "$('#south').remove();dataEntrySubmit('submit-btn-saverecord')",
+          "targets": [],
+          "value": "",
+          "id": "b8d14fdb-e7c0-4355-8d85-7c63ac235060"
+        },
+        {
+          "comment": "",
+          "command": "waitForElementPresent",
+          "target": "id=south",
+          "targets": [],
+          "value": "30000",
+          "id": "cd5dfafb-f9ac-4382-b419-c8547398e9ef"
+        },
+        {
+          "command": "runScript",
+          "target": "//SETDESC:Click \"Completion Data\"",
+          "value": "",
+          "id": "0d487d66-46e7-47ec-980d-38c9aaa07476"
+        },
+        {
+          "comment": "",
+          "command": "click",
+          "target": "css=#event_grid_table a[href*=\"page=completion_data\"]",
+          "targets": [],
+          "value": "",
+          "id": "b8702d33-331a-46d6-ba5e-8ae55de6bbfb"
+        },
+        {
+          "command": "runScript",
+          "target": "//SETDESC:Enter lowercase text into the field with the @UPPERCASE action tag",
+          "value": "",
+          "id": "8be9a740-69d7-40cb-96e7-123ec67416b4"
+        },
+        {
+          "comment": "",
+          "command": "type",
+          "target": "name=taguppercase",
+          "targets": [],
+          "value": "abc",
+          "id": "deb7af4d-20a1-43eb-b79c-819e037fd26f"
+        },
+        {
+          "command": "runScript",
+          "target": "//SETDESC:Click outside of field",
+          "value": "",
+          "id": "a0bb90bd-b9ae-4d3a-ae00-117ce1407aef"
+        },
+        {
+          "comment": "",
+          "command": "click",
+          "target": "css=#taguppercase-tr .labelrc",
+          "targets": [],
+          "value": "",
+          "id": "d23c5571-6fdb-4b30-9419-3090b2b17db8"
+        },
+        {
+          "command": "runScript",
+          "target": "//SETDESC:Assert that the text is now uppercase",
+          "value": "",
+          "id": "85bb8403-8b8b-4664-a010-8799d5a571b1"
+        },
+        {
+          "command": "type",
+          "target": "css=[name=\"taguppercase\"]",
+          "value": "SAVESCREENSHOT",
+          "id": "f873d666-8ad8-4f92-b51d-52faa026b2fb"
+        },
+        {
+          "comment": "",
+          "command": "assertValue",
+          "target": "css=[name=\"taguppercase\"]",
+          "targets": [],
+          "value": "ABC",
+          "id": "f960a9b9-b4c8-4f77-8260-345f480dba58"
+        },
+        {
+          "command": "runScript",
+          "target": "//SETDESC:Enter uppercase text into the field with the @LOWERCASE action tag",
+          "value": "",
+          "id": "83faf84d-3933-4d93-bef0-7f93ced0f6fe"
+        },
+        {
+          "comment": "",
+          "command": "type",
+          "target": "name=taglowercase",
+          "targets": [],
+          "value": "ABC",
+          "id": "8f75d477-d3a0-462d-8559-8c43c95c793f"
+        },
+        {
+          "command": "runScript",
+          "target": "//SETDESC:Click outside of field",
+          "value": "",
+          "id": "6a64b789-9867-438d-b627-16eff2286ad9"
+        },
+        {
+          "comment": "",
+          "command": "click",
+          "target": "css=#taglowercase-tr .labelrc",
+          "targets": [],
+          "value": "",
+          "id": "e637fa92-c59c-4e9a-8a71-ed71339a11a1"
+        },
+        {
+          "command": "runScript",
+          "target": "//SETDESC:Assert that the text is now lowercase",
+          "value": "",
+          "id": "f4ae1ad7-dd54-46b7-a17f-359e815b0144"
+        },
+        {
+          "command": "type",
+          "target": "css=[name=\"taglowercase\"]",
+          "value": "SAVESCREENSHOT",
+          "id": "1c678d01-5349-469a-8300-053946412e23"
+        },
+        {
+          "comment": "",
+          "command": "assertValue",
+          "target": "css=[name=\"taglowercase\"]",
+          "targets": [],
+          "value": "abc",
+          "id": "157e733d-c5ab-43a3-8d65-f4c4898a66ba"
+        },
+        {
+          "command": "runScript",
+          "target": "//SETDESC:Click \"Delete data\"",
+          "value": "",
+          "id": "14ed2eb6-82bc-427e-814c-5594c86c5aa7"
+        },
+        {
+          "command": "type",
+          "target": "css=[name=\"submit-btn-deleteform\"]",
+          "value": "SAVESCREENSHOT",
+          "id": "b926507e-efab-4f89-ab88-c6a763ede7c7"
+        },
+        {
+          "comment": "",
+          "command": "runScript",
+          "target": "$('#south').remove();dataEntrySubmit('submit-btn-deleteform')",
+          "targets": [],
+          "value": "",
+          "id": "622eec71-d0f8-49b8-a3f2-2e59f56e65d5"
+        },
+        {
+          "comment": "",
+          "command": "waitForElementPresent",
+          "target": "id=south",
+          "targets": [],
+          "value": "30000",
+          "id": "2eaae804-c275-4847-ad0c-24f561719379"
+        },
+        {
+          "comment": "",
+          "command": "runScript",
+          "target": "$('#south').remove()",
+          "targets": [],
+          "value": "",
+          "id": "0f416fee-179d-49f1-aa77-9f73718bdc2c"
+        },
+        {
+          "command": "click",
+          "target": "id=recordActionDropdownTrigger",
+          "value": "",
+          "id": "40b40eca-8edd-435c-ba6f-4147c5376c15"
+        },
+        {
+          "command": "click",
+          "target": "css=[onclick*=\"deleteRecord\"]",
+          "value": "",
+          "id": "2564b1e7-d909-43fd-952e-b8a6ffe9c80f"
+        },
+        {
+          "comment": "",
+          "command": "click",
+          "target": "css=.ok-button",
+          "targets": [],
+          "value": "",
+          "id": "9b45367b-c193-4fc2-a1b5-689a1fa933d7"
+        },
+        {
+          "comment": "",
+          "command": "click",
+          "target": "xpath=//button[contains(text(),'Close')]",
+          "targets": [],
+          "value": "",
+          "id": "ff2b8faa-3cd2-4d0b-8109-f7367d71f40e"
+        },
+        {
+          "comment": "",
+          "command": "waitForElementPresent",
+          "target": "id=south",
+          "targets": [],
+          "value": "30000",
+          "id": "9e9f50a5-c03c-48cb-806b-9ca822b7ec9e"
         }
       ]
     }

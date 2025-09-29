@@ -48,5 +48,15 @@
 		"file" : "test_10_VALIDATE-MESSAGE_action_tag.py",
 		"name" : "@VALIDATE-MESSAGE action tag",
 		"expected" : "The validation error message is the string supplied using the action tag"
+	},
+	{
+		"file" : "test_11_Baseline_date.py",
+		"name" : "Baseline date",
+		"expected" : "The recede baseline date option is shown next to the chosen baseline date field and when used sets the date back the specified amount"
+	},
+	{
+		"file" : "test_12_UPPERCASE_LOWERCASE_action_tag.py",
+		"name" : "@UPPERCASE and @LOWERCASE action tags",
+		"expected" : "The action tags force the field to be uppercase or lowercase respectively"
 	}
 ]

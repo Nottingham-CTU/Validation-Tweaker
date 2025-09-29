@@ -701,9 +701,13 @@ $(function()
                      function()
                      {
                        vForm.attr('action', vForm.attr('action') + '&__skipvalidate=1')
-                       vForm.submit()
+                       $('[name="submit-btn-saverecord"]').trigger('click')
                      },
                      ( vLastPage ? lang.data_entry_212 : lang.data_entry_536 ))
+        if ( $('.ok-button').text().match(/^<i class="[^"]*"><\/i>$/) )
+        {
+          $('.ok-button').html($('.ok-button').text())
+        }
         return false
       })
       var vContinueDiv = $('<div style="float:left;margin-top:10px;margin-left:5px"></div>')

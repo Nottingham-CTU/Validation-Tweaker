@@ -672,8 +672,12 @@ $(function()
 
 
 		// Output JavaScript.
-		addLangToJS( [ 'data_entry_287', 'survey_163', 'data_entry_199',
-		               'survey_1312', 'data_entry_212', 'data_entry_536' ] );
+		addLangToJS( [ 'data_entry_287',       // More save options
+		               'survey_163',           // You have partially completed this survey
+		               'data_entry_199',       // SAVE YOUR CHANGES?
+		               'survey_1312',          // Return and Edit Response
+		               'data_entry_212',       // Save & Mark Survey as Complete
+		               'data_entry_536' ] );   // Next Page >>
 ?>
 <script type="text/javascript">
 $(function()

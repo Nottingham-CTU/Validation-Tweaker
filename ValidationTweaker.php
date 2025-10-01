@@ -9,8 +9,7 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 
 
 
-	// If the skip validation of required fields option is enabled for surveys, temporarily deem all
-	// required fields to be not required when a survey is submitted using this option.
+	// Logic to be run before the page is rendered.
 
 	public function redcap_every_page_before_render()
 	{
@@ -27,11 +26,21 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 		// If a survey page, and the skip validation option is enabled and has been used,
 		// temporarily deem all required fields to be not required.
 		if ( $isSurveyPage && $this->getProjectSetting( 'survey-skip-validate' ) &&
-		     $_SERVER['REQUEST_METHOD'] == 'POST' && isset( $_GET['__skipvalidate'] ) )
+		     $_SERVER['REQUEST_METHOD'] == 'POST' )
 		{
+			$skipValidate = isset( $_GET['__skipvalidate'] );
+			$prevFields = true;
 			foreach ($GLOBALS['Proj']->metadata as $fieldName => $fieldData)
 			{
-				$GLOBALS['Proj']->metadata[$fieldName]['field_req'] = 0;
+				$submittedField = isset( $_POST[ $fieldName ] );
+				if ( $submittedField )
+				{
+					$prevFields = false;
+				}
+				if ( ( $skipValidate && $submittedField ) || $prevFields )
+				{
+					$GLOBALS['Proj']->metadata[$fieldName]['field_req'] = 0;
+				}
 			}
 		}
 

@@ -1,0 +1,16 @@
+[
+	{
+		"action" : "module",
+		"source" : "this",
+		"name" : "validation_tweaker"
+	},
+	{
+		"action" : "selenium",
+		"file" : "init.py"
+	},
+	{
+		"action" : "external-save",
+		"url" : "[secret-1]",
+		"data" : {"name":"Validation Tweaker REDCap Module Functionality Testing.pdf","file":"[pdf-inst]","version":"[unit-version] / RC [redcap-version]"}
+	}
+]

@@ -149,7 +149,7 @@ class ValidationTweaker extends \ExternalModules\AbstractExternalModule
 		              '&instance=' . intval( $instance );
 		$recedeURL = $this->escape( $recedeURL );
 
-			// Output JavaScript to apply the date validation.
+			// Output JavaScript to show the recede baseline date popup.
 ?>
 <script type="text/javascript">
 $(function()
@@ -596,7 +596,14 @@ $(function()
     $('#' + vPopupID).html(vPopupMsg)
     setTimeout( function()
     {
-      simpleDialog( vPopupMsg, null, vPopupID, null, function() { vElem.focus() } )
+      simpleDialog( vPopupMsg, null, vPopupID, null, function()
+                    {
+                      try
+                      {
+                        $('.ui-dialog .simpleDialog:not(#redcapValidationErrorPopup)').dialog('close')
+                      } catch (ex) {}
+                      vElem.focus()
+                    } )
     }, 20 )
     vElem.style.fontWeight = 'bold'
     vElem.style.backgroundColor = '#FFB7BE'

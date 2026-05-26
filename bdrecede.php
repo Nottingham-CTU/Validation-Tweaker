@@ -6,7 +6,11 @@ ignore_user_abort(true);
 \System::increaseMaxExecTime(1800);
 
 
-if ( $module->getProjectId() == null || ! is_string( $_GET['record'] ) ||
+$projectID = $module->getProjectId();
+
+// Check all the necessary parameters are supplied, and that either the server or the project is
+// development. Stop here if these are not satisfied.
+if ( $projectID == null || ! is_string( $_GET['record'] ) ||
      ! preg_match( '/^[1-9][0-9]*$/', $_GET['interval'] ) ||
      ! preg_match( '/^[1-9][0-9]*$/', $_GET['iterations'] ) ||
      ! preg_match( '/^[1-9][0-9]*$/', $_GET['event_id'] ) ||
@@ -17,11 +21,15 @@ if ( $module->getProjectId() == null || ! is_string( $_GET['record'] ) ||
 {
 	exit;
 }
+
+// Check that a baseline date field is defined in the module settings. Stop here if not.
 $dateField = $module->getProjectSetting( 'baseline-date' );
 if ( $dateField == '' )
 {
 	exit;
 }
+
+// Get the parameter values and the current value of the baseline date field.
 $record = $_GET['record'];
 $eventID = intval( $_GET['event_id'] );
 $instance = intval( $_GET['instance'] );
@@ -34,6 +42,7 @@ $slow = isset( $_GET['slow'] );
 $listData = \REDCap::getData( 'json-array', $record,
                               [ \REDCap::getRecordIdField(), $dateField ], $eventID );
 
+// Prepare the input data for saving.
 $input = [ \REDCap::getRecordIdField() => $record ];
 foreach ( $listData as $itemData )
 {
@@ -52,6 +61,8 @@ foreach ( $listData as $itemData )
 	}
 }
 
+// Perform a save operation every 10 seconds (60 seconds if slow iterations selected), subtracting
+// the interval from the date each time.
 for ( $i = 0; $i < $iterations; $i++ )
 {
 	if ( $i > 0 )
@@ -63,4 +74,13 @@ for ( $i = 0; $i < $iterations; $i++ )
 	                                              substr( $input[ $dateField ], 0, 4 ) ) ) .
 	                       substr( $input[ $dateField ], 10 );
 	\REDCap::saveData( 'json-array', [ $input ] );
+
+	// If the esendex alerts module is enabled, trigger its alerts to be evaluated and sent
+	// immediately on each iteration.
+	if ( $module->isModuleEnabled( 'esendex_alerts', $projectID ) )
+	{
+		$esendex = \ExternalModules\ExternalModules::getModuleInstance('esendex_alerts');
+		$esendex->checkProjectAlertsWithDatediff( $projectID );
+		$esendex->sendProjectNotifications( $projectID );
+	}
 }

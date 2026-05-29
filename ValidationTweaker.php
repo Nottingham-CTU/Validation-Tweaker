@@ -163,8 +163,12 @@ $(function()
                   'type="number" name="rbd:interval" value="1" min="1" style="width:4em"> &nbsp;' +
                   'days</td><td></td></tr><tr><td>Iterations</td><td><input type="number" ' +
                   'name="rbd:iterations" value="1" min="1" max="150" style="width:4em"></td><td>' +
-                  '<input type="checkbox" name="rbd:slow"> Slow iterations</td></tr></table>',
-                  'Recede baseline date', null, 400, null, null,
+                  '<input type="checkbox" name="rbd:slow"> Slow iterations</td></tr><tr><td ' +
+                  'colspan="3" style="font-size:0.8em">The date value will be updated in the ' +
+                  'background. It is recommended that you do not save this form until this ' +
+                  'process has had time to complete.<br>Each iteration will take 10 seconds (or ' +
+                  '1 minute if <i>slow iterations</i> is selected).</td></tr></table>',
+                  'Recede baseline date', null, 475, null, null,
                   function ()
                   {
                     var vRecedeURL = $('<span></span>').html('<?php echo $recedeURL; ?>').text()

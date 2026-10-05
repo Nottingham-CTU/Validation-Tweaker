@@ -578,10 +578,28 @@ $(function()
 <script type="text/javascript">
 $(function()
 {
+  var vFuncGetValue = function ( vElem )
+  {
+    if ( typeof vElem.attributes.fv != 'undefined' )
+    {
+      if ( vElem.attributes.fv.value.indexOf('_dmy') != -1 )
+      {
+        return vElem.value.slice(6,10) + '-' + vElem.value.slice(3,5) + '-' +
+               vElem.value.slice(0,2) + vElem.value.slice(10)
+      }
+      if ( vElem.attributes.fv.value.indexOf('_mdy') != -1 )
+      {
+        return vElem.value.slice(6,10) + '-' + vElem.value.slice(0,5) + vElem.value.slice(10)
+      }
+    }
+    return vElem.value
+  }
   var vFuncValidate = function ( vElem, vPattern, vLogic, vMessage )
   {
     var vRegex = new RegExp( vPattern )
-    var vLogicResult = vLogic == '' ? true : (new Function('return ' + vLogic))()
+    vLogic = vLogic.replace(/(document\.form\.[a-z_]+)\.value/,'vFuncGetValue($1)')
+    var vLogicResult = vLogic == '' ? true
+                                : (new Function('vFuncGetValue', 'return ' + vLogic))(vFuncGetValue)
     if ( vElem.value == '' || ( vLogicResult && ( vPattern == '' || vRegex.test( vElem.value ) ) ) )
     {
       vElem.style.fontWeight = 'normal'

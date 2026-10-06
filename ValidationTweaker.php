@@ -578,6 +578,35 @@ $(function()
 <script type="text/javascript">
 $(function()
 {
+  var vOldDatediff = datediff
+  datediff = function ( d1, d2, unit, dateformat, returnSigned )
+  {
+    if ( dateformat == 'dmy' )
+    {
+      if ( d1.slice(2,3) == '-' )
+      {
+        d1 = d1.slice(6,10) + '-' + d1.slice(3,5) + '-' + d1.slice(0,2) + d1.slice(10)
+      }
+      if ( d2.slice(2,3) == '-' )
+      {
+        d2 = d2.slice(6,10) + '-' + d2.slice(3,5) + '-' + d2.slice(0,2) + d2.slice(10)
+      }
+      dateformat = 'ymd'
+    }
+    else if ( dateformat == 'mdy' )
+    {
+      if ( d1.slice(2,3) == '-' )
+      {
+        d1 = d1.slice(6,10) + '-' + d1.slice(0,5) +  d1.slice(10)
+      }
+      if ( d2.slice(2,3) == '-' )
+      {
+        d2 = d2.slice(6,10) + '-' + d2.slice(0,5) + d2.slice(10)
+      }
+      dateformat = 'ymd'
+    }
+    return vOldDatediff( d1, d2, unit, dateformat, returnSigned )
+  }
   var vFuncGetValue = function ( vElem )
   {
     if ( typeof vElem.attributes.fv != 'undefined' )
